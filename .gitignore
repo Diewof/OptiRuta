@@ -1,0 +1,27 @@
+# Variables de entorno y secretos: nunca versionar valores reales.
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore
+
+# Credenciales de Supabase CLI / login local
+.supabase/
+
+# Sistema operativo / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Flutter/Dart (ver tambien mobile/.gitignore para detalle especifico)
+**/.dart_tool/
+**/.flutter-plugins-dependencies
+**/build/
+**/.pub-cache/
+
+# Logs
+*.log

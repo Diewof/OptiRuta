@@ -1,0 +1,4 @@
+# Supabase local — artefactos que no se versionan
+.branches
+.temp
+.env
