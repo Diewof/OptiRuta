@@ -47,7 +47,7 @@
 **Flujo de una operación típica (crear y asignar viaje):**
 
 1. La app (rol administrador) pide estimación de ruta a la Edge Function `POST /functions/v1/rutas` con origen y destino; recibe `distancia_estimada` y `tiempo_estimado`.
-2. La app invoca la RPC `viaje_crear(p_vehiculo_id, p_conductor_id, p_cliente_id, p_origen, p_destino, p_distancia_estimada, p_tiempo_estimado, p_peso_carga)`.
+2. La app invoca la RPC `viaje_crear(p_remision, p_vehiculo_id, p_conductor_id, p_cliente_id, p_origen, p_destino, p_distancia_estimada, p_tiempo_estimado_min, p_peso_carga, p_valor_flete)`.
 3. La RPC (PL/pgSQL, ejecución atómica) valida que el vehículo y el conductor existan y estén activos, que el vehículo no tenga otro viaje en `EN_CURSO`/`ASIGNADO`, calcula el ACPM estimado con `tarifa_combustible` + `rendimiento_km_galon` + factor por rango de tonelaje, inserta el `viaje` en estado `PLANIFICADO` y los `costo_viaje` estimados, y devuelve el id.
 4. Las políticas **RLS** garantizan que solo un usuario con `app_metadata.rol = 'ADMINISTRADOR'` puede ejecutar esa operación.
 5. Ante una regla incumplida, la RPC lanza `RAISE EXCEPTION` con un `ERRCODE` propio; la app lo traduce a mensaje de dominio en español.
@@ -177,11 +177,18 @@ Organizar por feature, no por tipo técnico a nivel raíz. Dentro de cada featur
 - `conductor` (id, usuario_id FK, licencia, fecha_vencimiento_licencia, tipo_pago [FIJO/COMISION/MIXTO], porcentaje_comision, sueldo_base, activo)
 - `cliente` (id, nombre, datos de contacto)
 - `tarifa_combustible` (id, ciudad, precio_galon, fecha_vigencia_desde)
-- `viaje` (id, vehiculo_id FK, conductor_id FK, cliente_id FK, origen, destino, distancia_estimada, tiempo_estimado, estado, peso_carga, fecha_creacion, fecha_cierre)
+- `viaje` (id, remision unique, vehiculo_id FK, conductor_id FK, cliente_id FK, origen, destino, distancia_estimada, tiempo_estimado, estado, peso_carga, valor_flete, valor_anticipo, saldo_pendiente [generado = valor_flete − valor_anticipo], fecha_creacion, fecha_cierre)
 - `hito_viaje` (id, viaje_id FK, tipo [SALIDA/LLEGADA_CARGUE/SALIDA_CON_CARGA/LLEGADA_DESTINO], fecha_hora, origen_dato [APP/MANUAL])
-- `costo_viaje` (id, viaje_id FK, categoria [ACPM, PEAJE, CARGUE, DESCARGUE, PARQUEADERO, COMISION, MANTENIMIENTO_AMORTIZADO, OTRO], valor_estimado, valor_real, fuente [AUTOMATICO/MANUAL])
+- `costo_viaje` (id, viaje_id FK, categoria [ACPM, PEAJE, CARGUE, DESCARGUE, PARQUEADERO, COMISION, ACEITE, LAVADO, ENGRASE, MANTENIMIENTO_AMORTIZADO, OTRO], valor_estimado, valor_real, fuente [AUTOMATICO/MANUAL])
 - `peaje_capturado` (id, viaje_id FK nullable hasta asociarse, placa, monto, fecha_hora, punto_peaje, correo_origen_id)
 - `ajuste_viaje` (id, viaje_id FK, usuario_id FK, motivo, campo_modificado, valor_anterior, valor_nuevo, fecha)
+
+`viaje.remision` es el número de remisión física de la empresa (trazabilidad con el papeleo existente); `viaje.valor_flete` es un monto pactado con el cliente, capturado por el administrador al crear el viaje: **no** sigue el patrón de par `valor_estimado`/`valor_real` que usa el resto de datos automáticos, porque no es algo que el sistema estime. `valor_anticipo` es el adelanto ya pagado por el cliente — informativo (cartera), no participa en `rentabilidad_marginal`. `ACEITE`, `LAVADO` y `ENGRASE` son costo real por viaje (distinto de `MANTENIMIENTO_AMORTIZADO`, que es el costo fijo prorrateado sin fuente por viaje). Detalle completo en `diseno-base-de-datos-optiruta.md`.
+
+### Rentabilidad: qué costos entran en cada RPC
+
+- `rentabilidad_marginal(p_viaje_id)`: `valor_flete − (ACPM + peajes + cargue + descargue + parqueadero + comisión variable + aceite + lavado + engrase + otros)`. Todas las categorías de `costo_viaje` excepto `MANTENIMIENTO_AMORTIZADO`.
+- `rentabilidad_consolidada(p_desde, p_hasta)`: agrega la rentabilidad marginal de todos los viajes del período y le resta el `MANTENIMIENTO_AMORTIZADO` de `costo_viaje` más el sueldo fijo del conductor prorrateado por período (`conductor.sueldo_base`, tipo de pago `FIJO`/`MIXTO`).
 
 ### Relaciones e integridad referencial
 
@@ -261,7 +268,7 @@ Hay dos superficies:
 
 ### Operaciones de referencia
 
-- `supabase.rpc('viaje_crear', {...})` — crear y asignar viaje (RLS: solo administrador).
+- `supabase.rpc('viaje_crear', { ..., p_valor_flete })` — crear y asignar viaje, incluye el ingreso pactado con el cliente (RLS: solo administrador).
 - `supabase.from('viaje').select(...).eq('id', id)` — consultar detalle de viaje (RLS filtra por rol/propietario).
 - `supabase.rpc('hito_registrar', { p_viaje_id, p_tipo, p_fecha_hora })` — registrar hito (RLS: solo el conductor asignado).
 - `supabase.rpc('viaje_cerrar', { p_viaje_id })` — cerrar viaje y consolidar rentabilidad (RLS: solo administrador).

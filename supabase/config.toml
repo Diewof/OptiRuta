@@ -370,6 +370,11 @@ authorization_url_path = "/oauth/consent"
 # Allow dynamic client registration
 allow_dynamic_registration = false
 
+[functions.precio-acpm-scraper]
+# No es un endpoint de la app: la protege una clave de servicio en cabecera
+# (PRECIO_ACPM_SCRAPER_SECRET), no el JWT de Supabase Auth.
+verify_jwt = false
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.

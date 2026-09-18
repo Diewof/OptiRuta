@@ -4,6 +4,8 @@ Sistema de información para empresa colombiana de transporte de carga pesada. F
 
 Documentación fuente: [Documentacion/Esquemas/](Documentacion/Esquemas/). Ante conflicto de **dominio** (reglas de viajes, rentabilidad, campos), esos documentos mandan. La sección **Stack** de este archivo **supersede** cualquier referencia a Dart Frog / MySQL en esos esquemas: el proyecto usa Supabase. Actualizar los esquemas cuando toque tocarlos; no reintroducir el stack viejo.
 
+Trazabilidad RF/RNF → estado MVP / Fase 2: [Documentacion/Esquemas/requisitos-funcionales-y-no-funcionales.md](Documentacion/Esquemas/requisitos-funcionales-y-no-funcionales.md). Esta beta es un **MVP**, no el sistema completo del documento de requisitos original.
+
 ## Stack (obligatorio)
 
 - **App móvil**: Flutter, Clean Architecture + BLoC/Cubit. Única interfaz (no hay web). Vistas por rol. La capa `data` habla con Supabase mediante el paquete `supabase_flutter`.
@@ -56,7 +58,8 @@ No microservicios, event sourcing, CQRS, hexagonal, colas ni bus de eventos. **N
 - Ciclo de vida: `PLANIFICADO → ASIGNADO → EN_CURSO → FINALIZADO → CERRADO`.
 - Editable hasta `CERRADO`. Transiciones validadas en la función RPC `viaje_cambiar_estado` + trigger que rechaza transiciones inválidas.
 - Un viaje cerrado **no se edita ni se borra**: todo cambio se registra en `ajuste_viaje` (append-only) vía la RPC `viaje_registrar_ajuste(p_viaje_id, p_motivo, …)` con **motivo obligatorio**. `ajuste_viaje` tiene RLS solo con políticas de `INSERT` y `SELECT` (sin `UPDATE`/`DELETE`), y se revoca `UPDATE`/`DELETE` al rol de la app. No existe borrado de viajes.
-- Todo dato automático se guarda como par **`valor_estimado` / `valor_real`** separados, editables y auditables.
+- Todo dato automático se guarda como par **`valor_estimado` / `valor_real`** separados, editables y auditables. Excepción: `viaje.valor_flete` es un monto pactado con el cliente, capturado por el administrador al crear el viaje — un único valor, no un par estimado/real.
+- Rentabilidad marginal: `valor_flete − (ACPM + peajes + cargue + descargue + parqueadero + otros + comisión variable)`. El mantenimiento amortizado y el sueldo fijo prorrateado **no** entran aquí, solo en la consolidada por período.
 - ACPM estimado = `distancia ÷ rendimiento_km_galon × precio_galon`, con factor de ajuste simple por rango de tonelaje (no modelo estadístico). Precio en tabla `tarifa_combustible` (ciudad + fecha de vigencia). El cálculo vive en RPC o columna generada, no en la app.
 - Hitos registrados por el conductor: `SALIDA`, `LLEGADA_CARGUE`, `SALIDA_CON_CARGA`, `LLEGADA_DESTINO`. Se comparan contra el tiempo estimado para detectar retrasos. Sin tracking GPS.
 - Peajes: solo vía Edge Function `peajes-correo` (webhook del correo GoPass), protegida con **clave de servicio en cabecera** (secreto de la función), **no** con JWT de Supabase Auth. Extrae placa, peaje, fecha/hora, valor e inserta vía RPC con `service_role`. Sin scraping.
@@ -144,7 +147,9 @@ Dos superficies:
 
 ## Fuera del MVP (no implementar)
 
-Tracking GPS continuo, detección de paradas, actualización automática del precio ACPM, analítica predictiva, integración RNDC, facturación electrónica DIAN, multiempresa, operadores de peaje distintos de GoPass, soporte web. Tampoco: servidor de aplicación propio, Supabase Realtime para lógica de negocio, mover a Edge Functions reglas que puedan ir en Postgres.
+Tracking GPS continuo, detección de paradas, analítica predictiva, integración RNDC, facturación electrónica DIAN, multiempresa, operadores de peaje distintos de GoPass, soporte web, filtros de reportes, exportación de reportes (PDF u otro formato), calendario interactivo (mensual/semanal) para fechas de viaje. Tampoco: servidor de aplicación propio, Supabase Realtime para lógica de negocio, mover a Edge Functions reglas que puedan ir en Postgres.
+
+La actualización automática del precio de ACPM **sí entra en el MVP** (decisión confirmada en `diseno-base-de-datos-optiruta.md` sección 6, que reabrió y cerró esta exclusión): Edge Function `precio-acpm-scraper` + RPC `tarifa_combustible_registrar_automatico` + `pg_cron` mensual, acotada a una sola ciudad de referencia (Medellín) con validación de variación ±15% antes de sobrescribir `tarifa_combustible`.
 
 ## Reglas para agentes
 

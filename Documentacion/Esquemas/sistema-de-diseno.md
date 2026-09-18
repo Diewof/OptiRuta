@@ -192,7 +192,7 @@ Organización: **átomos → moléculas → organismos**, presentacional vs. con
 | **Botón secundario** | Outline 1 px `color.border.input`, texto `color.text.primary`, fondo `color.surface.card`, misma métrica. |
 | **Botón destructivo** | Relleno o outline `color.brand.red`, texto blanco (relleno) o rojo (outline). Solo cuando la acción borra/cierra. Requiere confirmación. |
 | **Input de texto** | Fondo blanco, borde `color.border.input`, label `type.label` siempre visible arriba, alto ≥ 48, `radius.md`. Estado error: borde `color.state.error` + texto de error `type.caption` en rojo debajo. |
-| **Valor automático vs. manual** | Campo con **valor estimado/automático**: fondo `color.surface.canvas`, icono de "calculado" y label "Estimado", editable pero visualmente distinto. Campo **ingresado por el usuario / valor real**: fondo blanco, borde pleno. Nunca deben verse iguales (regla de dominio: pares `valor_estimado` / `valor_real`). |
+| **Valor automático vs. manual** | Campo con **valor estimado/automático**: fondo `color.surface.canvas`, icono de "calculado" y label "Estimado", editable pero visualmente distinto. Campo **ingresado por el usuario / valor real**: fondo blanco, borde pleno. Nunca deben verse iguales (regla de dominio: pares `valor_estimado` / `valor_real`). `viaje.valor_flete` usa siempre el estilo de **valor ingresado por el usuario** (fondo blanco, borde pleno): es un monto pactado con el cliente, no un par estimado/real. |
 | **Selector / dropdown** | Preferir sobre escritura libre. Muestra valor precargado por defecto. Icono chevron outline. |
 | **Badge de estado** | `radius.sm`, `type.label`, relleno del color de estado al 12–16 % con **texto e icono del color de estado a intensidad plena** o texto `#14273F`. Sobre ámbar de advertencia, texto oscuro; blanco solo sobre verde o rojo de error. |
 | **Icono** | Outline, trazo uniforme, 24 dp. Camión para vehículo/módulo de vehículos y como marcador animado del banner de autenticación. Set: vehículo, ruta, conductor, carga, mantenimiento, documento, ubicación, reporte, alerta, ACPM, peaje. |
@@ -250,3 +250,13 @@ Recomendaciones presentes en las skills que **contradicen** el concepto *centro 
 | Librerías UI de React Native (Paper, Tamagui, NativeBase) de `references/ui-libraries.md` | Stack es Flutter; se construyen los componentes en `lib/core/`. |
 
 Lo que **sí** se toma de las skills: grilla 4/8, `touch targets` 48 dp, umbrales de contraste WCGA AA y el validador, escala tipográfica acotada con mínimos legibles, diseño atómico + separación presentacional/contenedor, los cuatro estados de pantalla, *skeletons*, virtualización de listas y feedback < 100 ms, y el checklist de accesibilidad.
+
+---
+
+## Fuera de alcance (MVP)
+
+Componentes de UI que **no** se diseñan ni se construyen en esta beta (ver [requisitos-funcionales-y-no-funcionales.md](requisitos-funcionales-y-no-funcionales.md)):
+
+- Vista de calendario interactivo (mensual/semanal) para gestión de fechas de viaje — el MVP usa formulario + selector de fecha simple, ya cubierto por los átomos de esta sección.
+- Mapa de tracking en vivo / cualquier visualización de ubicación en tiempo real.
+- Filtros avanzados de reportes y exportación de reportes (PDF u otro formato).
