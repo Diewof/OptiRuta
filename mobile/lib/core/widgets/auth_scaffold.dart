@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
@@ -100,7 +101,7 @@ class AuthScaffold extends StatelessWidget {
                   : AppColors.canvas,
               leading: IconButton(
                 onPressed: () => Navigator.of(context).maybePop(),
-                icon: const Icon(Icons.arrow_back),
+                icon: const Icon(LucideIcons.arrowLeft),
                 tooltip: 'Volver',
               ),
             )

@@ -41,7 +41,7 @@ Implementar:
 No entra en esta beta:
 
 - Calendario interactivo con vista mensual/semanal (el MVP resuelve la fecha con formulario simple).
-- Tracking GPS continuo, detección de paradas prolongadas y consentimiento de ubicación asociado (RF-21, RF-22, RF-23).
+- Tracking GPS continuo (persistir la posición) y consentimiento de ubicación asociado (RF-21, RF-23). La detección de parada/desvío en el teléfono con evento puntual al administrador (RF-22) sí entra en el MVP.
 - Filtros de reportes (fecha, ruta, cliente, conductor, vehículo) y exportación de reportes (ej. PDF).
 - Offline-first más allá de hitos y costos manuales (no se navega ni consulta histórico sin conexión).
 
@@ -104,7 +104,7 @@ Comparar los tiempos registrados con el tiempo estimado de la ruta.
 
 Notificar al administrador cuando el retraso sea significativo: **20% del tiempo estimado del tramo entre hitos, o 30 minutos, lo que sea mayor**. Umbral inicial, ajustable con datos reales de operación.
 
-El tracking GPS continuo queda fuera del MVP.
+El tracking GPS continuo (guardar o transmitir la posición) queda fuera del MVP. El mapa del conductor muestra su posición en vivo solo en el teléfono, y la app envía únicamente eventos puntuales de parada prolongada o desvío de ruta.
 
 ## Conectividad
 
@@ -155,8 +155,8 @@ Diseñar el dashboard para móvil mediante tarjetas KPI y navegación hacia el d
 
 No implementar:
 
-- Tracking GPS continuo.
-- Detección automática de paradas prolongadas.
+- Tracking GPS continuo (guardar o transmitir la posición periódicamente).
+- Servicio de ubicación en segundo plano (la detección de parada/desvío solo opera con la app abierta).
 - Consentimiento informado de ubicación (solo aplica si se activa tracking).
 - Analítica predictiva.
 - Integración RNDC.

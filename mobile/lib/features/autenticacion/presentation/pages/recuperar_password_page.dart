@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../core/accessibility/announce.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -106,7 +107,7 @@ class _RecuperarPasswordPageState extends State<RecuperarPasswordPage> {
           label: 'Correo electrónico',
           controller: _correo,
           focusNode: _correoFocus,
-          prefixIcon: Icons.mail_outline,
+          prefixIcon: LucideIcons.mail,
           rules: AuthFieldRules.correo,
           showRuleErrors: _submitted,
           validMessage: 'Correo válido',

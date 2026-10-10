@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../domain/entities/rol_usuario.dart';
 import '../../domain/entities/usuario.dart';
 import '../bloc/auth_cubit.dart';
 import '../bloc/auth_state.dart';
+import '../pages/home_admin_page.dart';
+import '../pages/home_conductor_page.dart';
 import '../pages/login_page.dart';
-import '../pages/sesion_iniciada_page.dart';
 
 /// Widget raiz: enruta segun el estado de autenticacion y el rol.
 ///
@@ -22,9 +24,10 @@ class AuthGate extends StatelessWidget {
       builder: (BuildContext context, AuthState estado) {
         return switch (estado) {
           AuthDesconocido() => const _CargandoSesion(),
-          AuthAutenticado(:final Usuario usuario) => SesionIniciadaPage(
-            usuario: usuario,
-          ),
+          AuthAutenticado(:final Usuario usuario) => switch (usuario.rol) {
+            RolUsuario.administrador => HomeAdminPage(usuario: usuario),
+            RolUsuario.conductor => HomeConductorPage(usuario: usuario),
+          },
           AuthAutenticando() ||
           AuthNoAutenticado() ||
           AuthError() => const LoginPage(),

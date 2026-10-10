@@ -4,8 +4,8 @@ import 'app_colors.dart';
 
 /// Escala tipográfica acotada. Una sola familia: Inter.
 ///
-/// Pesos permitidos: SemiBold/Bold (títulos), Medium (labels/subtítulos),
-/// Regular (contenido y formularios). No usar otros tamaños ni pesos.
+/// Pesos: Bold/SemiBold (títulos y cifras), Medium (labels), Regular
+/// (contenido). No usar otros tamaños ni pesos.
 abstract final class AppTypography {
   static const String family = 'Inter';
 
@@ -13,6 +13,17 @@ abstract final class AppTypography {
   static const List<FontFeature> tabular = <FontFeature>[
     FontFeature.tabularFigures(),
   ];
+
+  /// Solo el número de rentabilidad.
+  static const TextStyle hero = TextStyle(
+    fontFamily: family,
+    fontSize: 36,
+    height: 42 / 36,
+    letterSpacing: -0.5,
+    fontWeight: FontWeight.w700,
+    color: AppColors.textPrimary,
+    fontFeatures: tabular,
+  );
 
   static const TextStyle display = TextStyle(
     fontFamily: family,
@@ -34,7 +45,7 @@ abstract final class AppTypography {
     fontFamily: family,
     fontSize: 16,
     height: 22 / 16,
-    fontWeight: FontWeight.w500,
+    fontWeight: FontWeight.w600,
     color: AppColors.textPrimary,
   );
 

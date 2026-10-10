@@ -31,57 +31,53 @@ class OrDivider extends StatelessWidget {
   }
 }
 
-/// Botón "Continuar con Google". El inicio de sesión federado no está en el
-/// MVP (el backend solo hace JWT + bcrypt), así que se muestra **deshabilitado**
-/// con aviso "Disponible próximamente". Habilitarlo requiere OAuth en backend
-/// y app.
+/// Botón "Continuar con Google". Con [onPressed] nulo se muestra deshabilitado
+/// (p. ej. mientras otra operación de login está en curso).
 class GoogleButton extends StatelessWidget {
-  const GoogleButton({super.key});
+  const GoogleButton({required this.onPressed, super.key});
+
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: 'Disponible próximamente',
-      child: Opacity(
-        opacity: 0.55,
-        child: SizedBox(
-          height: 48,
-          width: double.infinity,
-          child: OutlinedButton(
-            onPressed: null,
-            style: OutlinedButton.styleFrom(
-              disabledForegroundColor: AppColors.textBody,
-              backgroundColor: AppColors.card,
-              side: const BorderSide(color: AppColors.borderInput),
-              shape: const RoundedRectangleBorder(
-                borderRadius: AppRadius.lgAll,
-              ),
-              textStyle: const TextStyle(
-                fontFamily: AppTypography.family,
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-              ),
+    return Opacity(
+      opacity: onPressed == null ? 0.55 : 1,
+      child: SizedBox(
+        height: 48,
+        width: double.infinity,
+        child: OutlinedButton(
+          onPressed: onPressed,
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.textBody,
+            disabledForegroundColor: AppColors.textBody,
+            backgroundColor: AppColors.card,
+            side: const BorderSide(color: AppColors.borderInput),
+            shape: const RoundedRectangleBorder(borderRadius: AppRadius.lgAll),
+            textStyle: const TextStyle(
+              fontFamily: AppTypography.family,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                Image.asset(
-                  'assets/branding/google_g.png',
-                  width: 20,
-                  height: 20,
-                  filterQuality: FilterQuality.medium,
-                  errorBuilder:
-                      (BuildContext context, Object error, StackTrace? stack) =>
-                          const Icon(
-                            Icons.g_mobiledata,
-                            size: 24,
-                            color: AppColors.textSecondary,
-                          ),
-                ),
-                const SizedBox(width: AppSpacing.x2),
-                const Text('Continuar con Google'),
-              ],
-            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              Image.asset(
+                'assets/branding/google_g.png',
+                width: 20,
+                height: 20,
+                filterQuality: FilterQuality.medium,
+                errorBuilder:
+                    (BuildContext context, Object error, StackTrace? stack) =>
+                        const Icon(
+                          Icons.g_mobiledata,
+                          size: 24,
+                          color: AppColors.textSecondary,
+                        ),
+              ),
+              const SizedBox(width: AppSpacing.x2),
+              const Text('Continuar con Google'),
+            ],
           ),
         ),
       ),

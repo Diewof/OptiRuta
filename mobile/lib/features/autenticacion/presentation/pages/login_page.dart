@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../core/accessibility/announce.dart';
 import '../../../../core/routing/app_routes.dart';
@@ -105,7 +106,7 @@ class _LoginPageState extends State<LoginPage> {
               label: 'Correo electrónico',
               controller: _correo,
               focusNode: _correoFocus,
-              prefixIcon: Icons.mail_outline,
+              prefixIcon: LucideIcons.mail,
               hint: 'ejemplo@empresa.com',
               rules: AuthFieldRules.correo,
               showRuleErrors: _submitted,
@@ -120,7 +121,7 @@ class _LoginPageState extends State<LoginPage> {
               label: 'Contraseña',
               controller: _contrasena,
               focusNode: _contrasenaFocus,
-              prefixIcon: Icons.lock_outline,
+              prefixIcon: LucideIcons.lock,
               errorText: _contrasenaError,
               isPassword: true,
               textInputAction: TextInputAction.done,
@@ -142,12 +143,16 @@ class _LoginPageState extends State<LoginPage> {
               label: 'Ingresar',
               onPressed: cargando ? null : _ingresar,
               loading: cargando,
-              trailingIcon: Icons.arrow_forward,
+              trailingIcon: LucideIcons.arrowRight,
             ),
             const SizedBox(height: AppSpacing.x6),
             const OrDivider(),
             const SizedBox(height: AppSpacing.x4),
-            const GoogleButton(),
+            GoogleButton(
+              onPressed: cargando
+                  ? null
+                  : () => context.read<AuthCubit>().iniciarConGoogle(),
+            ),
             const SizedBox(height: AppSpacing.x4),
             AuthFooterPrompt(
               question: '¿No tienes cuenta? ',

@@ -2,7 +2,7 @@
 
 ## Concepto
 
-Diseñar la aplicación como un **centro de control logístico**.
+Diseñar la aplicación como una **herramienta profesional con trato cercano y moderno** (v2). Detalle: `Diseno-v2/sistema-de-diseno-v2.md`.
 
 La interfaz debe transmitir:
 
@@ -67,11 +67,9 @@ No mezclar familias tipográficas.
 
 ## Botones
 
-- Usar botones rectangulares.
-- Utilizar esquinas ligeramente redondeadas.
-- Evitar botones tipo pill.
+- Botones rectangulares con esquinas de 12 (no pill; los badges y chips sí son pill).
 - Tener un único botón primario por pantalla.
-- El botón primario debe utilizar el color ámbar.
+- El botón primario usa el **azul de acción** (nunca ámbar ni rojo). Radio 12, nunca pill.
 - Usar botones secundarios con estilo outline.
 - Atenuar claramente los botones deshabilitados.
 
@@ -109,7 +107,7 @@ Características:
 - Fondo blanco.
 - Sombra sutil.
 - Bordes definidos.
-- Usar una franja lateral o superior para indicar estados cuando sea necesario.
+- Franja lateral = viaje con retraso (RF-20); la rentabilidad va en su propio semáforo.
 
 ## Navegación
 
@@ -153,11 +151,7 @@ Utilizar imágenes únicamente cuando tengan una función real, por ejemplo:
 - Evidencias de mantenimiento.
 - Documentos.
 
-Para estados vacíos utilizar:
-- Ilustraciones lineales simples, o
-- Texto claro sin ilustración.
-
-Evitar ilustraciones coloridas tipo flat design.
+Se permiten, siempre con función: foto o imagen de reemplazo del vehículo, figura de ruta (estática y estimada) e ilustración de marca (carretera en S del logo) en vacío, éxito de cierre y error; máximo una por pantalla. Prohibidas las fotos de stock y las ilustraciones con paletas ajenas.
 
 ## Gráficos
 
@@ -207,7 +201,7 @@ No crear estilos diferentes para cada módulo.
 
 ## Principio general
 
-La interfaz debe parecer una herramienta profesional de control operativo, no una aplicación de consumo.
+La interfaz debe parecer una herramienta profesional de control operativo con trato cercano.
 
 Priorizar:
 
@@ -216,3 +210,11 @@ Priorizar:
 Evitar:
 
 **Decoración → saturación visual → colores innecesarios → elementos sin función.**
+
+## Movimiento (v2)
+
+Solo con función (confirmar, mostrar avance, dar estado), 120–300 ms y el conteo de rentabilidad 600 ms. Nunca retrasa ni bloquea el registro del conductor, respeta «reducir movimiento» y nunca es el único aviso. Catálogo y tokens en `Diseno-v2/sistema-de-diseno-v2.md` §2.4.
+
+## Tono (v2)
+
+Español colombiano, tuteo, frases cortas, sin jerga técnica («Hoy no tienes viaje asignado»).

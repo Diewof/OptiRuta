@@ -4,16 +4,18 @@ import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_typography.dart';
 
-/// Botón secundario: outline 1 px, texto azul acero, fondo blanco.
+/// Botón secundario: outline en azul de acción, fondo blanco.
 class SecondaryButton extends StatelessWidget {
   const SecondaryButton({
     required this.label,
     required this.onPressed,
+    this.leadingIcon,
     super.key,
   });
 
   final String label;
   final VoidCallback? onPressed;
+  final IconData? leadingIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -23,18 +25,32 @@ class SecondaryButton extends StatelessWidget {
       child: OutlinedButton(
         onPressed: onPressed,
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.textPrimary,
+          foregroundColor: AppColors.primary,
           backgroundColor: AppColors.card,
-          side: const BorderSide(color: AppColors.borderInput),
+          side: BorderSide(
+            color: onPressed == null
+                ? AppColors.borderInput
+                : AppColors.primary,
+            width: 1.5,
+          ),
           overlayColor: AppColors.pressedOverlay,
           shape: const RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
           textStyle: const TextStyle(
             fontFamily: AppTypography.family,
-            fontSize: 15,
+            fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
         ),
-        child: Text(label),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            if (leadingIcon != null) ...<Widget>[
+              Icon(leadingIcon, size: 18),
+              const SizedBox(width: 8),
+            ],
+            Flexible(child: Text(label, textAlign: TextAlign.center)),
+          ],
+        ),
       ),
     );
   }

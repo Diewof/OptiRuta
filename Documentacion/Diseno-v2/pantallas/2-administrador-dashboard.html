@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OptiRuta v2 — Administrador · Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/optiruta.css">
+<style>
+  .hero { background: var(--navy); color: #fff; border-radius: var(--r-lg); box-shadow: var(--elev-float); padding: var(--s4); }
+  .hero .t-hero { color: #fff; }
+  .hero .sem { color: var(--text); }
+  .meter { display: grid; grid-template-columns: repeat(14, 1fr); gap: 3px; }
+  .meter i { height: 8px; border-radius: 2px; background: transparent; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.5); }
+  .meter i.on { background: #fff; box-shadow: none; }
+  .period { display: inline-flex; align-items: center; }
+  .period .iconbtn { width: 48px; height: 48px; color: var(--action); }
+  .period .iconbtn:disabled { color: var(--disabled); cursor: not-allowed; }
+  .period .lbl { min-width: 96px; text-align: center; font-weight: 600; color: var(--text); font-size: calc(14px * var(--ts)); }
+  .kpi { background: #fff; border: 1px solid var(--divider); border-radius: var(--r-lg); box-shadow: var(--elev-card); padding: var(--s3) var(--s4); }
+  .fleet { display: flex; gap: var(--s1); margin-top: var(--s2); }
+  .fleet .v { width: 32px; height: 32px; border-radius: var(--r-sm); display: flex; align-items: center; justify-content: center; background: var(--navy); color: #fff; }
+  .fleet .v.off { background: #fff; color: var(--muted); box-shadow: inset 0 0 0 1.5px var(--b-input); }
+  .fleet .v .i { width: 20px; height: 20px; }
+  .trip { display: flex; overflow: hidden; padding: 0; text-align: left; width: 100%; font: inherit; color: inherit; border: 1px solid var(--divider); }
+  .trip .body { flex: 1; padding: var(--s3); display: flex; flex-direction: column; gap: var(--s2); min-width: 0; }
+  .prog { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; flex: 1; }
+  .prog i { height: 4px; border-radius: 2px; background: var(--navy-12); }
+  .prog i.on { background: var(--success); }
+  .bellwrap { position: relative; }
+</style>
+</head>
+<body>
+<script src="assets/icons.js"></script>
+<div class="stage">
+<div class="phone"><div class="app">
+
+  <div class="scroll" id="view">
+    <div class="pad" style="padding-top:var(--s4)">
+      <div class="row between wrap" style="gap:var(--s2)">
+        <div class="brand"><img src="assets/logo.png" alt=""><span class="t-title">Resumen</span></div>
+        <div class="period" role="group" aria-label="Periodo">
+          <button class="iconbtn" id="prev" type="button" aria-label="Mes anterior"><svg class="i"><use href="#i-chevron-l"/></svg></button>
+          <span class="lbl" id="mes" aria-live="polite"></span>
+          <button class="iconbtn" id="next" type="button" aria-label="Mes siguiente"><svg class="i"><use href="#i-chevron-r"/></svg></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="pad stack gap3" style="margin-top:var(--s2);padding-bottom:var(--s4)">
+      <!-- NORMAL -->
+      <section data-state="ok" class="stack gap3">
+        <!-- Rentabilidad CONSOLIDADA del período (nunca mezclada con la marginal por viaje) -->
+        <div class="hero" id="hero" aria-labelledby="hero-l">
+          <div class="row between wrap" style="gap:var(--s2)">
+            <span class="t-label" id="hero-l" style="color:rgba(255,255,255,.8)">Rentabilidad consolidada · <span id="hero-mes"></span></span>
+            <span class="base on-navy" id="base"></span>
+          </div>
+          <div class="t-hero num" id="big" style="margin-top:var(--s1)" aria-live="polite"></div>
+          <div class="row wrap" style="gap:var(--s3);margin-top:var(--s2)">
+            <span class="sem" id="sem" data-sem="ok"><span class="ico"><svg class="i i-sem ok"><use href="#i-sem-ok"/></svg><svg class="i i-sem warn"><use href="#i-sem-warn"/></svg><svg class="i i-sem bad"><use href="#i-sem-bad"/></svg><svg class="i i-sem none"><use href="#i-sem-none"/></svg></span><span id="semlbl"></span></span>
+            <span class="t-body num" id="margen" style="color:rgba(255,255,255,.92)"></span>
+          </div>
+          <div style="margin-top:var(--s4);padding-top:var(--s4);border-top:1px solid rgba(255,255,255,.18);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s2)">
+            <div class="stack"><span class="t-cap" style="color:rgba(255,255,255,.75)">Ingresos</span><span class="t-sub num" id="ing" style="color:#fff"></span></div>
+            <div class="stack"><span class="t-cap" style="color:rgba(255,255,255,.75)">Costos</span><span class="t-sub num" id="cos" style="color:#fff"></span></div>
+            <div class="stack"><span class="t-cap" style="color:rgba(255,255,255,.75)">Costo por km</span><span class="t-sub num" id="ckm" style="color:#fff"></span></div>
+          </div>
+          <div style="margin-top:var(--s4)">
+            <div class="meter" id="meter" aria-hidden="true"></div>
+            <div class="t-cap" id="meter-t" style="margin-top:var(--s2);color:rgba(255,255,255,.8)"></div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s3)">
+          <div class="kpi">
+            <div class="row t-label muted" style="gap:var(--s2)"><svg class="i i-20"><use href="#i-doble-troque"/></svg>Flota en ruta</div>
+            <div class="t-display num strong" style="margin-top:var(--s1)">3 <span class="t-body muted" style="font-weight:500">de 4</span></div>
+            <div class="fleet" aria-label="3 de 4 vehículos en ruta">
+              <span class="v"><svg class="i"><use href="#i-doble-troque"/></svg></span><span class="v"><svg class="i"><use href="#i-mula"/></svg></span><span class="v"><svg class="i"><use href="#i-doble-troque"/></svg></span><span class="v off"><svg class="i"><use href="#i-doble-troque"/></svg></span>
+            </div>
+          </div>
+          <button class="kpi" id="alertcard" type="button" style="text-align:left;font:inherit;color:inherit;cursor:pointer">
+            <div class="row t-label muted" style="gap:var(--s2)"><svg class="i i-20"><use href="#i-alerta"/></svg>Alertas activas</div>
+            <div class="t-display num strong" style="margin-top:var(--s1)" id="alertn">3</div>
+            <div class="t-cap muted" id="alertd" style="margin-top:var(--s1)">1 retraso · 2 vencimientos</div>
+          </button>
+        </div>
+
+        <div class="row between" style="margin-top:var(--s2)">
+          <span class="t-sub">Viajes en curso</span>
+          <button class="btn btn-ghost" type="button" style="padding:0 var(--s1);min-height:48px">Ver todos<svg class="i i-16"><use href="#i-chevron-r"/></svg></button>
+        </div>
+        <div class="muted t-cap" id="cap" style="margin-top:-8px">Primero los que necesitan atención</div>
+
+        <div class="stack gap2" id="trips"></div>
+      </section>
+
+      <section data-state="loading" hidden id="skeleton"></section>
+
+      <section data-state="error" hidden>
+        <div class="card centerstate">
+          <img src="assets/ilustracion-ruta-interrumpida.svg" alt="">
+          <div class="t-sub">No pudimos cargar el resumen</div>
+          <div class="t-body muted">Revisa tu conexión e inténtalo otra vez.</div>
+          <button class="btn btn-primary" type="button" style="margin-top:var(--s3)" onclick="OR.setState('loading');setTimeout(()=>OR.setState('ok'),900)"><svg class="i i-20"><use href="#i-sync-girando"/></svg>Reintentar</button>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <nav class="nav" aria-label="Navegación principal">
+    <button type="button" aria-current="page"><svg class="i i-fill"><use href="#i-resumen"/></svg>Resumen</button>
+    <button type="button"><svg class="i"><use href="#i-ruta"/></svg>Viajes</button>
+    <button type="button"><svg class="i"><use href="#i-doble-troque"/></svg>Flota</button>
+    <button type="button"><svg class="i"><use href="#i-personas"/></svg>Personas</button>
+    <button type="button"><svg class="i"><use href="#i-mas"/></svg>Más</button>
+  </nav>
+  <div class="scrim"></div>
+  <div class="toast" role="status"></div>
+</div></div>
+
+<aside class="pp">
+  <h2>Administrador · Dashboard</h2>
+  <p>Datos de ejemplo. Cambia de mes con las flechas del encabezado: el número se acomoda y el semáforo cambia sin saltos.</p>
+  <h3>Estado de pantalla</h3>
+  <div class="seg">
+    <button data-setstate="ok" aria-pressed="true">Normal</button><button data-setstate="loading" aria-pressed="false">Cargando</button>
+    <button data-setstate="empty" aria-pressed="false">Vacío</button><button data-setstate="error" aria-pressed="false">Error</button>
+  </div>
+  <h3>Simular</h3>
+  <div class="seg"><button id="simalert">Llega una alerta</button><button id="replay">Repetir carga</button></div>
+  <h3>Accesibilidad</h3>
+  <div class="seg"><button data-toggle="ts130" aria-pressed="false">Texto 130 %</button><button data-toggle="rm" aria-pressed="false">Reducir movimiento</button></div>
+  <h3>Reglas que cumple</h3>
+  <p>• El hero es la <b>consolidada</b> (incluye mantenimiento y sueldo fijo prorrateado); cada viaje muestra su <b>marginal</b>. Etiquetadas distinto.<br>
+  • La etiqueta de base (<i>Proyectada · Parcial · Confirmada</i>) y el semáforo vienen del servidor. Aquí los umbrales son de ejemplo.<br>
+  • Franja lateral = viaje con retraso (RF-20), no rentabilidad.</p>
+</aside>
+</div>
+
+<script src="assets/app.js"></script>
+<script>
+(function () {
+  var $ = function (s) { return document.querySelector(s); };
+  var ic = window.icon;
+
+  // Datos de EJEMPLO. Estado del semáforo y base de cálculo los entrega el servidor (umbrales por definir).
+  var MESES = [
+    { n: 'Agosto 2026', l: 'agosto', ing: 71.4e6, cos: 76.2e6, ckm: 3710, sem: 'bad', base: 'conf', ok: 12, tot: 12 },
+    { n: 'Septiembre 2026', l: 'septiembre', ing: 92.1e6, cos: 83.6e6, ckm: 3480, sem: 'warn', base: 'conf', ok: 16, tot: 16 },
+    { n: 'Octubre 2026', l: 'octubre', ing: 86.3e6, cos: 67.9e6, ckm: 3120, sem: 'ok', base: 'parc', ok: 9, tot: 14 }
+  ];
+  var SEM = { ok: 'Rentable', warn: 'Margen bajo', bad: 'Pérdida', none: 'Sin datos suficientes' };
+  var BASE = {
+    proy: ic('dato-estimado') + 'Proyectada', parc: ic('dato-parcial') + 'Parcial', conf: ic('dato-real') + 'Confirmada'
+  };
+  var TRIPS = [
+    { ruta: 'Barranquilla → Medellín', veh: 'UQB 731 · Jorge M.', img: 'doble-troque', hit: 1, ret: 'Retraso 1 h 20', sem: 'bad', val: -0.4e6, proy: true },
+    { ruta: 'Cali → Bogotá', veh: 'SPH 092 · Mula · Camilo P.', img: 'mula', hit: 3, ret: null, sem: 'warn', val: 0.6e6, proy: true },
+    { ruta: 'Medellín → Cartagena', veh: 'SXK 418 · Andrés R.', img: 'doble-troque', hit: 2, ret: null, sem: 'ok', val: 2.8e6, proy: false }
+  ];
+  var idx = 2, prevVal = 0;
+
+  function semMarkup(s, small) { return ic('sem-' + s, 'i-sem'); }
+  function setSem(el, s, lbl) { el.setAttribute('data-sem', s); lbl.textContent = SEM[s]; }
+
+  function paint(first) {
+    var m = MESES[idx], res = m.ing - m.cos, marg = res / m.ing * 100;
+    $('#mes').textContent = m.n; $('#hero-mes').textContent = m.l;
+    $('#prev').disabled = idx === 0; $('#next').disabled = idx === MESES.length - 1;
+    $('#base').innerHTML = BASE[m.base];
+    setSem($('#sem'), m.sem, $('#semlbl'));
+    OR.count($('#big'), first ? 0 : prevVal, res, function (v) { return OR.fmt.mm(v, 1); }, 600);
+    prevVal = res;
+    $('#margen').textContent = 'Margen ' + OR.fmt.pct(marg);
+    $('#ing').textContent = OR.fmt.mm(m.ing); $('#cos').textContent = OR.fmt.mm(m.cos); $('#ckm').textContent = OR.fmt.pesos(m.ckm);
+    $('#meter').innerHTML = Array.apply(null, Array(14)).map(function (_, i) { return '<i class="' + (i < Math.round(m.ok / m.tot * 14) ? 'on' : '') + '"></i>'; }).join('');
+    $('#meter-t').textContent = m.ok + ' de ' + m.tot + ' viajes con costos confirmados';
+    $('#hero').setAttribute('aria-label', 'Rentabilidad consolidada de ' + m.l + ': ' + OR.fmt.mm(res) + ', ' + SEM[m.sem] + ', margen ' + OR.fmt.pct(marg));
+    OR.say('Rentabilidad consolidada de ' + m.l + ': ' + OR.fmt.mm(res) + ', ' + SEM[m.sem]);
+  }
+  $('#prev').addEventListener('click', function () { if (idx > 0) { idx--; paint(); } });
+  $('#next').addEventListener('click', function () { if (idx < MESES.length - 1) { idx++; paint(); } });
+
+  function trips() {
+    $('#trips').innerHTML = TRIPS.map(function (t) {
+      var stripe = t.ret ? 'warn' : 'none';
+      var prog = [0, 1, 2, 3].map(function (i) { return '<i class="' + (i < t.hit ? 'on' : '') + '"></i>'; }).join('');
+      return '<button class="card trip" type="button" aria-label="' + t.ruta + ', ' + t.veh + ', hito ' + t.hit + ' de 4, ' + SEM[t.sem] + '">' +
+        '<span class="stripe ' + stripe + '"></span><span class="body">' +
+        '<span class="row wrap" style="gap:var(--s2) var(--s3);align-items:flex-start">' +
+          '<span class="row gap3" style="flex:1 1 150px;min-width:0;align-items:flex-start"><span class="thumb" style="width:64px;height:48px"><img src="assets/vehiculo-' + t.img + '.svg" alt=""></span>' +
+          '<span class="stack" style="flex:1;min-width:0"><span class="t-body strong">' + t.ruta + '</span><span class="t-cap muted">' + t.veh + '</span></span></span>' +
+          '<span class="stack" style="align-items:flex-end;margin-left:auto"><span class="t-sub num">' + (t.proy ? '≈ ' : '') + OR.fmt.mm(t.val) + '</span><span class="t-cap muted">' + (t.proy ? 'Proyectada' : 'Parcial') + ' · marginal</span></span>' +
+        '</span>' +
+        '<span class="row" style="gap:var(--s2)"><span class="prog" aria-hidden="true">' + prog + '</span><span class="t-cap muted" style="flex:none">Hito ' + t.hit + ' de 4</span></span>' +
+        '<span class="row between wrap" style="gap:var(--s2)">' +
+          '<span class="row wrap" style="gap:var(--s2)"><span class="badge sm st-curso">' + ic('ruta') + 'En curso</span>' + (t.ret ? '<span class="badge sm retraso">' + ic('retraso') + t.ret + '</span>' : '') + '</span>' +
+          '<span class="sem sm" data-sem="' + t.sem + '"><span class="ico">' + ['ok', 'warn', 'bad', 'none'].map(function (k) { return ic('sem-' + k, 'i-sem ' + k); }).join('') + '</span>' + SEM[t.sem] + '</span>' +
+        '</span></span></button>';
+    }).join('');
+    OR.stagger($('#trips').children);
+  }
+
+  function all() { $('#cap').hidden = false; paint(true); trips(); }
+  // Vacío: el resumen sigue visible; solo la lista de viajes en curso explica qué falta y ofrece la acción.
+  var orig = OR.setState;
+  OR.setState = function (n) {
+    if (n !== 'empty') return orig(n);
+    orig('ok'); $('#cap').hidden = true;
+    $('#trips').innerHTML = '<div class="card centerstate"><img src="assets/ilustracion-sin-viaje.svg" alt=""><div class="t-sub">Todavía no hay viajes en curso</div><div class="t-body muted">Cuando un conductor salga, verás aquí cómo va y cuánto rinde.</div><button class="btn btn-primary" type="button" style="margin-top:var(--s3)">' + ic('plus', 'i-20') + 'Crear viaje</button></div>';
+    document.querySelectorAll('[data-setstate]').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-setstate') === 'empty'); });
+  };
+  $('#replay').addEventListener('click', function () { OR.setState('loading'); setTimeout(function () { OR.setState('ok'); }, 700); });
+  OR.onOk = all;
+
+  // Alerta nueva: un solo pulso
+  var n = 3;
+  $('#simalert').addEventListener('click', function () {
+    n++; $('#alertn').textContent = n; $('#alertd').textContent = '1 retraso · ' + (n - 1) + ' vencimientos';
+    var c = $('#alertcard'); c.classList.remove('pulse-once'); void c.offsetWidth; c.classList.add('pulse-once');
+    OR.say('Nueva alerta. Ahora hay ' + n + ' alertas activas.');
+  });
+
+  $('#skeleton').innerHTML = OR.skel([[232, 0, null, '16px'], [88, 12, null, '16px'], [112, 12, null, '16px'], [112, 8, null, '16px']]);
+
+  all();
+  if (OR.hash.state) OR.setState(OR.hash.state);
+  if (OR.hash.mes) { idx = +OR.hash.mes; paint(true); }
+})();
+</script>
+</body>
+</html>

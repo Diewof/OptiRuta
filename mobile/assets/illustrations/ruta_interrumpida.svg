@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -26 240 186" fill="none">
+  <!-- Ilustración de marca: error / sin conexión. La ruta del logo con un corte. -->
+  <defs>
+    <mask id="a" maskUnits="userSpaceOnUse" x="0" y="-26" width="240" height="186">
+      <path d="M20 132H104C122 132 136 126 142 118" stroke="#fff" stroke-width="17" stroke-linecap="round" fill="none"/>
+      <path d="M20 132H104C122 132 136 126 142 118" stroke="#000" stroke-width="12" stroke-linecap="round" fill="none"/>
+    </mask>
+    <mask id="b" maskUnits="userSpaceOnUse" x="0" y="-26" width="240" height="186">
+      <path d="M118 70C100 62 70 72 70 56C70 34 98 28 124 28H214" stroke="#fff" stroke-width="17" stroke-linecap="round" fill="none"/>
+      <path d="M118 70C100 62 70 72 70 56C70 34 98 28 124 28H214" stroke="#000" stroke-width="12" stroke-linecap="round" fill="none"/>
+    </mask>
+  </defs>
+  <path d="M20 132H104C122 132 136 126 142 118" stroke="#333A45" stroke-width="17" stroke-linecap="round" mask="url(#a)"/>
+  <path d="M118 70C100 62 70 72 70 56C70 34 98 28 124 28H214" stroke="#333A45" stroke-width="17" stroke-linecap="round" mask="url(#b)"/>
+  
+  <circle cx="142" cy="94" r="11" fill="#fff" stroke="#14273F" stroke-width="3.5"/>
+  <path d="M142 88v7" stroke="#14273F" stroke-width="3.5" stroke-linecap="round"/><circle cx="142" cy="100" r="1.8" fill="#14273F"/>
+  <circle cx="20" cy="132" r="7" fill="#fff" stroke="#14273F" stroke-width="3.5"/>
+  <g transform="translate(214 28) scale(2.3) translate(-12 -21.5)">
+    <path d="M12 21.5s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z" fill="#A62C2C"/>
+    <circle cx="12" cy="10.5" r="2.4" fill="#fff"/>
+  </g>
+</svg>

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../accessibility/announce.dart';
 import '../theme/app_colors.dart';
@@ -158,9 +159,7 @@ class _AppTextFieldState extends State<AppTextField> {
                 ? IconButton(
                     onPressed: _toggleObscure,
                     icon: Icon(
-                      _obscure
-                          ? Icons.visibility_outlined
-                          : Icons.visibility_off_outlined,
+                      _obscure ? LucideIcons.eye : LucideIcons.eyeOff,
                       size: 22,
                     ),
                     color: AppColors.textSecondary,
@@ -230,7 +229,11 @@ class _ErrorLine extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            const Icon(Icons.error_outline, size: 16, color: AppColors.error),
+            const Icon(
+              LucideIcons.circleAlert,
+              size: 16,
+              color: AppColors.error,
+            ),
             const SizedBox(width: AppSpacing.x2),
             Expanded(
               child: Text(

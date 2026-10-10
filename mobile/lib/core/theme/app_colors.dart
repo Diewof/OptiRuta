@@ -42,18 +42,13 @@ abstract final class AppColors {
   // Overlay "pressed" para superficies de acción (#14273F @ 20%).
   static const Color pressedOverlay = Color(0x3314273F);
 
-  // Tintes suaves para fondos de acento sutiles (sección de formulario, chips).
-  static const Color navyTint = Color(0xFFEDEFF3); // navy @ ~6%
-  static const Color brandRedTint = Color(0xFFF6E9E9); // brandRed @ ~10%
+  // Tintes derivados por mezcla con blanco (no son colores nuevos de marca).
+  static const Color navyTint = Color(0xFFEDEFF3); // navy @ ~6 %
+  static const Color navyTint12 = Color(
+    0xFFE3E5E8,
+  ); // navy @ ~12 %: hilo, esqueleto
+  static const Color brandRedTint = Color(0xFFF6E9E9); // brandRed @ ~10 %
   static const Color successTint = Color(0xFFE7F1EC);
+  static const Color warningTint = Color(0xFFFBF1DC);
   static const Color errorTint = Color(0xFFF8E9E7);
-
-  // --- Excepción de autenticación (ver sistema-de-diseno.md §1) ---
-  // Degradado del botón primario SOLO en las pantallas de auth. El resto de la
-  // app mantiene la acción plana.
-  static const Color authGradientStart = Color(0xFF14273F); // navy
-  static const Color authGradientMid = Color(0xFF1E3A5F); // azul de acción
-  static const Color authGradientEnd = Color(
-    0xFF2C5A8F,
-  ); // azul claro de tránsito
 }

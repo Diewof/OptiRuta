@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
@@ -55,7 +56,7 @@ class WorkInProgressPage extends StatelessWidget {
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
-                    Icons.construction_outlined,
+                    LucideIcons.hardHat,
                     size: 30,
                     color: AppColors.navy,
                   ),

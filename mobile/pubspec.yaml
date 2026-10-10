@@ -47,6 +47,24 @@ dependencies:
   # Igualdad por valor para entidades de dominio y estados de BLoC.
   equatable: ^2.0.5
 
+  # Set de iconos principal de la app (outline, trazo uniforme, un solo
+  # peso, ver CLAUDE.md "Identidad visual"). Sustituye a Icons de
+  # Material, que mezcla estilos filled/outlined de forma inconsistente.
+  # Única excepción: Icons.g_mobiledata como marcador de marca de Google
+  # (Lucide no incluye logos de terceros).
+  lucide_icons_flutter: ^3.1.20
+
+  # Renderiza las ilustraciones de línea propias (SVG) de estados vacíos y
+  # de error -uso secundario de imagen, siempre funcional, nunca
+  # decorativo, ver CLAUDE.md "Identidad visual"-.
+  flutter_svg: ^2.3.0
+  # Mapas: flutter_map dibuja el mapa con tiles de OpenStreetMap (gratis, sin
+  # API key ni facturación). latlong2 es su tipo de coordenada (LatLng).
+  # geolocator entrega la posición del conductor y gestiona el permiso de
+  # ubicación en Android. Ninguno persiste datos.
+  geolocator: ^14.1.1
+  flutter_map: ^8.3.2
+  latlong2: ^0.10.1
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -66,9 +84,6 @@ dev_dependencies:
 
   # Genera los iconos de launcher de Android/iOS desde un único PNG fuente.
   flutter_launcher_icons: ^0.14.4
-
-# Iconos de la app. Fuente: assets/branding/apkIcon.jpeg (cuadrado, sin
-# transparencia). Tras cambiarlo: dart run flutter_launcher_icons
 flutter_launcher_icons:
   android: true
   ios: true
@@ -91,6 +106,9 @@ flutter:
   assets:
     - assets/branding/
     - assets/decor/
+    - assets/illustrations/
+    - assets/icons/
+    - assets/vehiculos/
 
   fonts:
     - family: Inter

@@ -12,6 +12,9 @@ class _AuthRepositoryFalso implements AuthRepository {
   Future<Sesion?> sesionActual() async => null;
 
   @override
+  Future<void> iniciarConGoogle() => throw UnimplementedError();
+
+  @override
   Future<Sesion> iniciarSesion({
     required String correo,
     required String contrasena,

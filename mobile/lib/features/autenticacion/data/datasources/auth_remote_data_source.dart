@@ -22,6 +22,21 @@ class AuthRemoteDataSource {
     return _auth.signInWithPassword(email: correo, password: contrasena);
   }
 
+  /// Abre el navegador con el consentimiento de Google. Al terminar, Supabase
+  /// redirige al deep link [redirectUrl] y el SDK completa la sesion, que llega
+  /// por [cambiosDeAutenticacion]. Devuelve `false` si no se pudo abrir.
+  Future<bool> iniciarConGoogle() {
+    return _auth.signInWithOAuth(
+      OAuthProvider.google,
+      redirectTo: redirectUrl,
+      authScreenLaunchMode: LaunchMode.externalApplication,
+    );
+  }
+
+  /// Debe coincidir con el intent-filter de AndroidManifest.xml y con
+  /// `additional_redirect_urls` en Supabase.
+  static const String redirectUrl = 'io.supabase.optiruta://login-callback/';
+
   /// El `data` va a `raw_user_meta_data`; el trigger del servidor toma de ahi
   /// el nombre e ignora cualquier `rol` (siempre asigna CONDUCTOR).
   Future<AuthResponse> registrarse({

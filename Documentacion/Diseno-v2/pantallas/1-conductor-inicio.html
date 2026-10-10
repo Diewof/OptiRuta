@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OptiRuta v2 — Conductor · Inicio</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/optiruta.css">
+</head>
+<body>
+<script src="assets/icons.js"></script>
+<div class="stage">
+<div class="phone"><div class="app">
+
+  <div class="scroll" id="view">
+    <!-- Encabezado: saludo cercano + estado de sincronización -->
+    <header style="background:var(--navy);color:#fff;padding:var(--s4) var(--s4) 56px;border-radius:0 0 var(--r-xl) var(--r-xl)">
+      <div class="row between wrap" style="gap:var(--s2)">
+        <div class="brand"><img src="assets/logo.png" alt=""><b>OptiRuta</b></div>
+        <span class="sync" id="sync" role="status"></span>
+      </div>
+      <div class="t-display" style="margin-top:var(--s4)">Hola, Andrés</div>
+      <div class="t-body" id="sub" style="color:rgba(255,255,255,.85)"></div>
+    </header>
+
+    <div style="margin:-40px var(--s4) 0">
+      <!-- NORMAL -->
+      <section data-state="ok" class="stack gap3">
+        <div class="card">
+          <div class="row between wrap" style="gap:var(--s2)">
+            <span class="t-label muted">Viaje #0142</span>
+            <span class="badge st-curso"><svg class="i"><use href="#i-ruta"/></svg>En curso</span>
+          </div>
+          <div style="margin-top:var(--s3)">
+            <div id="rf"></div>
+          </div>
+          <div class="row between" style="gap:var(--s3);margin-top:var(--s1);align-items:flex-start">
+            <div class="stack" style="min-width:0"><span class="t-sub">Medellín</span><span class="t-cap muted">Cargue · Planta Sabaneta</span></div>
+            <div class="stack" style="min-width:0;text-align:right"><span class="t-sub">Cartagena</span><span class="t-cap muted">Descargue · Mamonal</span></div>
+          </div>
+          <div class="row t-cap muted" style="gap:var(--s1);margin-top:var(--s3);padding-top:var(--s3);border-top:1px solid var(--divider)">
+            <svg class="i i-16"><use href="#i-dato-estimado"/></svg>
+            <span>Ruta estimada · <span class="num">640 km</span> · <span class="num">11 h 30 min</span></span>
+          </div>
+          <div class="row gap3" style="margin-top:var(--s3)">
+            <div class="thumb" style="width:72px;height:54px"><img src="assets/vehiculo-doble-troque.svg" alt="Doble troque SXK 418"></div>
+            <div class="stack" style="min-width:0">
+              <span class="t-body strong">SXK 418 · Doble troque</span>
+              <span class="t-cap muted">Cliente · Cementos del Norte</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="t-sub">Avance del viaje</div>
+          <div class="hitos" id="hitos" style="margin-top:var(--s3)"></div>
+        </div>
+
+        <div class="card">
+          <div class="t-sub">Costos del viaje</div>
+          <div class="stack" style="margin-top:var(--s2)">
+            <div class="row gap3" style="min-height:64px;border-bottom:1px solid var(--divider);padding:var(--s2) 0">
+              <span class="tile"><svg class="i"><use href="#i-acpm"/></svg></span>
+              <div class="stack" style="flex:1;min-width:0"><span class="t-body strong">ACPM</span><span class="dato-swap t-body" id="acpmval"></span></div>
+              <button class="btn btn-secondary" id="acpmBtn" type="button" style="flex:none;padding:0 var(--s3)"></button>
+            </div>
+            <div id="extras"></div>
+            <div class="row gap3" style="min-height:64px;padding:var(--s2) 0">
+              <span class="tile"><svg class="i"><use href="#i-peaje"/></svg></span>
+              <div class="stack" style="flex:1;min-width:0"><span class="t-body strong">Peajes</span><span class="t-cap muted">Llegan solos desde GoPass. No tienes que anotarlos.</span></div>
+              <span class="badge sm"><svg class="i"><use href="#i-sync-ok"/></svg>Automático</span>
+            </div>
+          </div>
+        </div>
+        <div style="height:var(--s2)"></div>
+      </section>
+
+      <!-- CARGANDO -->
+      <section data-state="loading" hidden id="skeleton"></section>
+
+      <!-- VACÍO -->
+      <section data-state="empty" hidden>
+        <div class="card centerstate">
+          <img src="assets/ilustracion-sin-viaje.svg" alt="">
+          <div class="t-sub">Hoy no tienes viaje asignado</div>
+          <div class="t-body muted">Cuando te asignen uno, aparecerá aquí con todo lo que necesitas para salir.</div>
+          <button class="btn btn-secondary" type="button" style="margin-top:var(--s3)">Ver mis viajes anteriores</button>
+        </div>
+      </section>
+
+      <!-- ERROR -->
+      <section data-state="error" hidden>
+        <div class="card centerstate">
+          <img src="assets/ilustracion-ruta-interrumpida.svg" alt="">
+          <div class="t-sub">No pudimos cargar tu viaje</div>
+          <div class="t-body muted">Revisa tu conexión e inténtalo de nuevo. Lo que ya registraste sigue guardado.</div>
+          <button class="btn btn-primary" type="button" style="margin-top:var(--s3)" onclick="OR.setState('loading');setTimeout(()=>OR.setState('ok'),900)"><svg class="i i-20"><use href="#i-sync-girando"/></svg>Reintentar</button>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Acción principal: un toque abre la hoja, un segundo toque confirma -->
+  <div class="actionbar" data-only="ok">
+    <button class="btn btn-primary btn-lg" id="cta" type="button"></button>
+  </div>
+
+  <nav class="nav" aria-label="Navegación principal">
+    <button type="button" aria-current="page"><svg class="i i-fill"><use href="#i-inicio"/></svg>Inicio</button>
+    <button type="button"><svg class="i"><use href="#i-ruta"/></svg>Mis viajes</button>
+    <button type="button"><svg class="i"><use href="#i-perfil"/></svg>Perfil<span class="pip" id="pip" hidden>1</span></button>
+  </nav>
+
+  <div class="scrim"></div>
+
+  <!-- Hoja: confirmar hito -->
+  <div class="sheet" id="sheet-hito" role="dialog" aria-modal="true" aria-labelledby="sh-t" hidden>
+    <div class="grab"></div>
+    <div class="row gap3">
+      <span class="tile" id="sh-ic"></span>
+      <div class="stack"><span class="t-sub" id="sh-t"></span><span class="t-cap muted">Viaje #0142 · Medellín → Cartagena</span></div>
+    </div>
+    <div class="row between" style="margin-top:var(--s4);padding:var(--s3) var(--s4);background:var(--canvas);border-radius:var(--r-md)">
+      <div class="stack"><span class="t-label muted">Hora</span><span class="t-cap muted">La toma el celular</span></div>
+      <span class="t-display num" id="sh-time"></span>
+    </div>
+    <div class="row t-cap muted" style="gap:var(--s2);margin-top:var(--s3);align-items:flex-start">
+      <svg class="i i-16" style="margin-top:1px"><use href="#i-sync-pendiente"/></svg>
+      <span>Si no tienes señal, queda guardado en tu equipo y se envía solo cuando vuelva.</span>
+    </div>
+    <div class="stack gap2" style="margin-top:var(--s4)">
+      <button class="btn btn-primary btn-lg" id="sh-ok" type="button"></button>
+      <button class="btn btn-ghost" type="button" onclick="OR.sheet.close()">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- Hoja: costo real (estimado precargado y visiblemente "automático") -->
+  <div class="sheet" id="sheet-costo" role="dialog" aria-modal="true" aria-labelledby="sc-t" hidden>
+    <div class="grab"></div>
+    <div class="t-sub" id="sc-t">Agregar costo real</div>
+    <div class="t-cap muted" style="margin-top:2px">Escoge el tipo y escribe lo que pagaste.</div>
+    <div class="chips" id="cats" style="margin-top:var(--s3)" role="group" aria-label="Tipo de costo"></div>
+    <div class="field auto" id="valfield" style="margin-top:var(--s4)">
+      <label for="val" id="val-l">Valor</label>
+      <div class="box">
+        <span class="pre">$</span>
+        <input id="val" inputmode="numeric" autocomplete="off" aria-describedby="val-h">
+        <span class="tag" id="val-tag">Est.</span>
+      </div>
+      <span class="help" id="val-h"></span>
+    </div>
+    <button class="btn btn-secondary" type="button" style="margin-top:var(--s3);width:100%"><svg class="i i-20"><use href="#i-camara"/></svg>Foto del recibo (opcional)</button>
+    <div class="stack gap2" style="margin-top:var(--s4)">
+      <button class="btn btn-primary btn-lg" id="sc-ok" type="button">Guardar como real</button>
+      <button class="btn btn-ghost" type="button" onclick="OR.sheet.close()">Cancelar</button>
+    </div>
+  </div>
+
+  <div class="toast" role="status"></div>
+</div></div>
+
+<aside class="pp">
+  <h2>Conductor · Inicio</h2>
+  <p>Datos de ejemplo. Interactúa: toca la acción principal, agrega el ACPM real, apaga la señal.</p>
+  <h3>Estado de pantalla</h3>
+  <div class="seg">
+    <button data-setstate="ok" aria-pressed="true">Normal</button><button data-setstate="loading" aria-pressed="false">Cargando</button>
+    <button data-setstate="empty" aria-pressed="false">Sin viaje</button><button data-setstate="error" aria-pressed="false">Error</button>
+  </div>
+  <h3>Conexión</h3>
+  <div class="seg"><button id="net" aria-pressed="false">Sin señal</button><button id="reset">Reiniciar demo</button></div>
+  <h3>Accesibilidad</h3>
+  <div class="seg"><button data-toggle="ts130" aria-pressed="false">Texto 130 %</button><button data-toggle="rm" aria-pressed="false">Reducir movimiento</button></div>
+  <h3>Qué mirar</h3>
+  <p><b>1 · Registrar hito:</b> botón → hoja → confirmar. Se dibuja el check, el hilo se rellena y el siguiente paso se activa. Con "Sin señal" queda “en tu equipo” y se sincroniza al volver.<br><b>2 · Estimado → real:</b> “Agregar real” en ACPM.<br>Las horas de “Deshacer” y el cierre tras el 4.º hito dependen de reglas por definir (ver doc).</p>
+</aside>
+</div>
+
+<script src="assets/app.js"></script>
+<script>
+(function () {
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  var ic = function (n, c) { return window.icon(n, c); };
+
+  // Datos de ejemplo del viaje #0142
+  var H0 = function () { return [
+    { k: 'salida', t: 'Salida', ic: 'hito-salida', est: '05:45', real: '05:42', st: 'sync' },
+    { k: 'cargue', t: 'Llegada a cargue', ic: 'hito-cargue', est: '07:05', real: '07:15', st: 'sync' },
+    { k: 'carga', t: 'Salida con carga', ic: 'hito-con-carga', est: '09:00', real: null, st: null },
+    { k: 'destino', t: 'Llegada a destino', ic: 'hito-destino', est: '15:30', real: null, st: null }]; };
+  var H = H0(), online = true, syncing = false, acpm = { est: 3050000, real: null }, extras = [];
+  var CATS = [['acpm', 'ACPM', 'acpm'], ['cargue', 'Cargue', 'hito-cargue'], ['descargue', 'Descargue', 'hito-destino'], ['parqueadero', 'Parqueadero', 'doble-troque'], ['otros', 'Otros', 'info']];
+  var cat = 'acpm';
+
+  var mins = function (s) { var p = s.split(':'); return +p[0] * 60 + +p[1]; };
+  var delta = function (e, r) { var d = mins(r) - mins(e); return d === 0 ? 'a la hora' : (d > 0 ? '+' : '−') + Math.abs(d) + ' min'; };
+  // Reloj de demostración (en la app real es la hora del celular).
+  var DEMO = ['09:04', '15:41'];
+  var nowHM = function () { return DEMO[Math.min(H.filter(function (h) { return h.real; }).length - 2, DEMO.length - 1)]; };
+  var pending = function () { return H.filter(function (h) { return h.st === 'local'; }).length; };
+
+  // ---- Sincronización ----
+  function chip() {
+    var el = $('#sync'), p = pending(), i, t;
+    if (syncing) { i = 'sync-girando'; t = 'Sincronizando…'; }
+    else if (!online) { i = 'sync-sin-senal'; t = p ? 'Sin señal · ' + p + ' en tu equipo' : 'Sin señal'; }
+    else if (p) { i = 'sync-pendiente'; t = p + ' por enviar'; }
+    else { i = 'sync-ok'; t = 'Sincronizado'; }
+    el.classList.toggle('busy', syncing);
+    el.innerHTML = ic(i) + '<span class="lbl">' + t + '</span>';
+    var pip = $('#pip'); pip.hidden = !p; pip.textContent = p;
+  }
+  function flush() {
+    if (!online || !pending()) { chip(); return; }
+    syncing = true; chip();
+    setTimeout(function () { H.forEach(function (h) { if (h.st === 'local') h.st = 'sync'; }); syncing = false; chip(); update(); OR.say('Todo sincronizado'); }, OR.rm ? 0 : 900);
+  }
+
+  // ---- Línea de progreso (el "hilo de ruta") ----
+  function build() {
+    $('#hitos').innerHTML = H.map(function (h) {
+      return '<div class="hito" data-k="' + h.k + '"><span class="conn"><i></i></span>' +
+        '<span class="node">' + ic(h.ic, 'pic') + '<svg class="i ck" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>' +
+        '<div class="main"><div class="row wrap" style="gap:var(--s2)"><span class="t-body strong tt"></span></div><div class="t-cap muted sub"></div></div>' +
+        '<div class="when"></div></div>';
+    }).join('');
+    update();
+  }
+  function update(just) {
+    var next = H.findIndex(function (h) { return !h.real; });
+    var rows = document.querySelectorAll('#hitos .hito');
+    H.forEach(function (h, i) {
+      var r = rows[i], done = !!h.real, isNext = i === next;
+      var filled = H[i + 1] && H[i + 1].real;
+      r.className = 'hito ' + (done ? 'done' : isNext ? 'next' : 'pending') + (filled ? ' filled' : '') + (just === i ? ' just' : '');
+      r.querySelector('.tt').innerHTML = h.t + (isNext ? ' <span class="pill-next">Siguiente</span>' : '');
+      r.querySelector('.sub').textContent = done ? 'Est. ' + h.est + ' · ' + delta(h.est, h.real) : '';
+      var w = r.querySelector('.when');
+      w.innerHTML = done
+        ? '<div class="t-body strong num">' + h.real + '</div><div class="t-cap muted row" style="gap:4px;justify-content:flex-end">Real · ' + ic(h.st === 'sync' ? 'sync-ok' : 'sync-pendiente', 'i-16') + (h.st === 'sync' ? 'Sincronizado' : 'En tu equipo') + '</div>'
+        : '<div class="t-body num muted">≈ ' + h.est + '</div><div class="t-cap muted">Estimado</div>';
+      r.setAttribute('aria-label', h.t + (done ? ', registrado a las ' + h.real : ', pendiente'));
+    });
+    if (just != null) setTimeout(function () { rows[just] && rows[just].classList.remove('just'); }, 900);
+    // Texto cercano + CTA
+    var d = H.filter(function (h) { return h.real; }).length;
+    $('#sub').textContent = d >= 4 ? 'Registraste todos los pasos. Gracias.' : d === 3 ? 'Vas rumbo a Cartagena' : 'Siguiente: salir con carga';
+    var cta = $('#cta');
+    if (next < 0) { cta.disabled = true; cta.innerHTML = ic('dato-real', 'i-20') + '<span>Todos los pasos registrados</span>'; }
+    else { cta.disabled = false; cta.innerHTML = ic(H[next].ic, 'i-20') + '<span>Registrar ' + H[next].t.charAt(0).toLowerCase() + H[next].t.slice(1) + '</span>'; }
+    cta.classList.remove('swapin'); void cta.offsetWidth; if (just != null) cta.classList.add('swapin');
+    chip();
+  }
+
+  // Hoja de confirmación → guardar (inmediato, sin esperar a la red)
+  var cur = -1;
+  $('#cta').addEventListener('click', function () {
+    cur = H.findIndex(function (h) { return !h.real; }); if (cur < 0) return;
+    $('#sh-t').textContent = H[cur].t; $('#sh-ic').innerHTML = ic(H[cur].ic);
+    $('#sh-time').textContent = nowHM();
+    $('#sh-ok').innerHTML = 'Confirmar'; $('#sh-ok').disabled = false;
+    OR.sheet.open('sheet-hito');
+  });
+  $('#sh-ok').addEventListener('click', function () {
+    var i = cur, h = H[i], b = $('#sh-ok'); if (b.disabled) return;
+    h.real = $('#sh-time').textContent; h.st = 'local';
+    b.disabled = true; b.innerHTML = '<svg class="i i-20 draw" aria-hidden="true" style="stroke-width:3"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Guardado';
+    b.style.opacity = 1;
+    setTimeout(function () {
+      OR.sheet.close(); update(i);
+      OR.toast(h.t + ' guardado a las ' + h.real, 'Deshacer', function () { h.real = null; h.st = null; update(); }, 6000);
+      if (online) setTimeout(flush, OR.rm ? 0 : 400); else chip();
+    }, OR.rm ? 0 : 420);
+  });
+
+  // ---- Costo real: estimado → real ----
+  function acpmView(animate) {
+    var el = $('#acpmval');
+    var html = acpm.real == null
+      ? '<span class="dato est"><span class="mk">≈</span> ' + OR.fmt.pesos(acpm.est).slice(2) + ' <span class="tag">Est.</span></span>'
+      : '<span class="dato real">' + ic('check', 'draw') + OR.fmt.pesos(acpm.real).slice(2) + ' <span class="tag">Real</span></span>';
+    var btn = $('#acpmBtn'); btn.textContent = acpm.real == null ? 'Agregar real' : 'Editar';
+    btn.setAttribute('aria-label', acpm.real == null ? 'Agregar ACPM real' : 'Editar ACPM real');
+    if (!animate) { el.innerHTML = html; return; }
+    el.classList.add('out');
+    setTimeout(function () { el.innerHTML = html; el.classList.remove('out'); el.classList.add('in'); setTimeout(function () { el.classList.remove('in'); }, 600); }, OR.rm ? 0 : 130);
+  }
+  function extrasView() {
+    $('#extras').innerHTML = extras.map(function (x) {
+      return '<div class="row gap3 enter" style="min-height:64px;border-bottom:1px solid var(--divider);padding:var(--s2) 0"><span class="tile">' + ic(x.i) + '</span><div class="stack" style="flex:1;min-width:0"><span class="t-body strong">' + x.l + '</span><span class="dato real">' + ic('check') + OR.fmt.pesos(x.v).slice(2) + ' <span class="tag">Real</span></span></div></div>';
+    }).join('');
+  }
+  function catsView() {
+    $('#cats').innerHTML = CATS.map(function (c) {
+      return '<button class="chip" type="button" data-c="' + c[0] + '" aria-pressed="' + (c[0] === cat) + '">' + ic(c[2], 'i-20') + c[1] + '</button>';
+    }).join('');
+    $('#cats').querySelectorAll('.chip').forEach(function (b) { b.addEventListener('click', function () { cat = b.dataset.c; catsView(); fieldInit(); }); });
+  }
+  function fieldInit() {
+    var f = $('#valfield'), inp = $('#val'), isA = cat === 'acpm';
+    f.classList.remove('error'); f.classList.toggle('auto', isA);
+    $('#val-l').textContent = isA ? 'Valor del ACPM' : 'Valor pagado';
+    inp.value = isA ? OR.fmt.pesos(acpm.real == null ? acpm.est : acpm.real).slice(2) : '';
+    inp.dataset.auto = isA && acpm.real == null ? '1' : '';
+    if (isA && acpm.real != null) f.classList.remove('auto');
+    $('#val-tag').hidden = !(isA && acpm.real == null);
+    $('#val-h').innerHTML = isA && acpm.real == null ? ic('dato-estimado', 'i-16') + 'Estimado por el sistema. Cámbialo por lo que pagaste.' : 'Este valor quedará como real.';
+  }
+  $('#val').addEventListener('focus', function (e) { e.target.select(); });
+  $('#val').addEventListener('input', function (e) {
+    var d = e.target.value.replace(/\D/g, ''); e.target.value = d ? OR.fmt.pesos(+d).slice(2) : '';
+    var f = $('#valfield'); f.classList.remove('auto', 'error'); $('#val-tag').hidden = true; e.target.dataset.auto = '';
+    $('#val-h').textContent = 'Este valor quedará como real.';
+  });
+  $('#acpmBtn').addEventListener('click', function () { cat = 'acpm'; catsView(); fieldInit(); OR.sheet.open('sheet-costo'); });
+  $('#sc-ok').addEventListener('click', function () {
+    var v = +($('#val').value.replace(/\D/g, '')), f = $('#valfield');
+    if (!v) { f.classList.add('error'); $('#val-h').innerHTML = ic('alerta', 'i-16') + 'Escribe el valor que pagaste para guardarlo.'; return; }
+    if (cat === 'acpm') { acpm.real = v; OR.sheet.close(); setTimeout(function () { acpmView(true); }, OR.rm ? 0 : 280); OR.toast('ACPM real guardado', null, null, 3000); }
+    else { var c = CATS.filter(function (x) { return x[0] === cat; })[0]; extras.push({ l: c[1], i: c[2], v: v }); OR.sheet.close(); extrasView(); OR.toast(c[1] + ' guardado como real', null, null, 3000); }
+  });
+
+  // ---- Panel ----
+  $('#net').addEventListener('click', function () {
+    online = !online; this.setAttribute('aria-pressed', !online); this.textContent = online ? 'Sin señal' : 'Volver a tener señal';
+    chip(); if (online) flush(); else OR.say('Sin señal. Lo que registres se guarda en tu equipo.');
+  });
+  $('#reset').addEventListener('click', function () { H = H0(); acpm.real = null; extras = []; online = true; $('#net').setAttribute('aria-pressed', 'false'); $('#net').textContent = 'Sin señal'; OR.setState('ok'); build(); acpmView(); extrasView(); });
+
+  // Estado "cargando": esqueleto de la estructura real
+  $('#skeleton').innerHTML = '<div class="card">' + OR.skel([[16, 0, '30%'], [56, 12], [20, 12, '60%'], [54, 12]]) + '</div><div class="card" style="margin-top:12px">' + OR.skel([[16, 0, '40%'], [32, 16], [32, 12], [32, 12], [32, 12]]) + '</div>';
+  OR.onOk = function () { acpmView(); extrasView(); update(); stag(); };
+  // El saludo acompaña al estado de la pantalla (no queda un "siguiente paso" fantasma).
+  var origState = OR.setState;
+  OR.setState = function (n) {
+    origState(n);
+    if (n === 'empty') $('#sub').textContent = 'Hoy no tienes viaje por hacer';
+    else if (n === 'error') $('#sub').textContent = 'Lo que registraste sigue guardado';
+    else if (n === 'loading') $('#sub').textContent = 'Cargando tu viaje…';
+  };
+  function stag() { OR.stagger(document.querySelectorAll('[data-state=ok] > .card')); }
+
+  $('#rf').innerHTML = OR.routeFig('Ruta estimada de Medellín a Cartagena');
+  build(); acpmView(); extrasView(); catsView(); fieldInit(); stag();
+  if (OR.hash.state) OR.setState(OR.hash.state);
+  if (OR.hash.sheet === 'hito') $('#cta').click();
+  if (OR.hash.sheet === 'costo') $('#acpmBtn').click();
+})();
+</script>
+</body>
+</html>

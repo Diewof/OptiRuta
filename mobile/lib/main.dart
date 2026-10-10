@@ -10,12 +10,45 @@ import 'features/autenticacion/data/datasources/auth_remote_data_source.dart';
 import 'features/autenticacion/data/repositories/auth_repository_impl.dart';
 import 'features/autenticacion/domain/repositories/auth_repository.dart';
 import 'features/autenticacion/domain/usecases/cerrar_sesion_use_case.dart';
+import 'features/autenticacion/domain/usecases/iniciar_con_google_use_case.dart';
 import 'features/autenticacion/domain/usecases/iniciar_sesion_use_case.dart';
 import 'features/autenticacion/domain/usecases/observar_sesion_use_case.dart';
 import 'features/autenticacion/domain/usecases/recuperar_password_use_case.dart';
 import 'features/autenticacion/domain/usecases/registrarse_use_case.dart';
 import 'features/autenticacion/presentation/bloc/auth_cubit.dart';
 import 'features/autenticacion/presentation/widgets/auth_gate.dart';
+import 'features/clientes/data/datasources/cliente_remote_data_source.dart';
+import 'features/clientes/data/repositories/cliente_repository_impl.dart';
+import 'features/clientes/domain/repositories/cliente_repository.dart';
+import 'features/conductores/data/datasources/conductor_remote_data_source.dart';
+import 'features/conductores/data/repositories/conductor_repository_impl.dart';
+import 'features/conductores/domain/repositories/conductor_repository.dart';
+import 'features/notificaciones/data/datasources/notificacion_remote_data_source.dart';
+import 'features/notificaciones/data/repositories/notificacion_repository_impl.dart';
+import 'features/notificaciones/domain/repositories/notificacion_repository.dart';
+import 'features/vehiculos/data/datasources/vehiculo_remote_data_source.dart';
+import 'features/vehiculos/data/repositories/vehiculo_repository_impl.dart';
+import 'features/vehiculos/domain/repositories/vehiculo_repository.dart';
+import 'features/viajes/data/datasources/ajuste_viaje_remote_data_source.dart';
+import 'features/viajes/data/datasources/costo_viaje_remote_data_source.dart';
+import 'features/viajes/data/datasources/hito_remote_data_source.dart';
+import 'features/viajes/data/datasources/rentabilidad_remote_data_source.dart';
+import 'features/viajes/data/datasources/ruta_remote_data_source.dart';
+import 'features/viajes/data/datasources/viaje_remote_data_source.dart';
+import 'features/viajes/data/repositories/ajuste_viaje_repository_impl.dart';
+import 'features/viajes/data/repositories/costo_viaje_repository_impl.dart';
+import 'features/viajes/data/repositories/hito_repository_impl.dart';
+import 'features/viajes/data/repositories/rentabilidad_repository_impl.dart';
+import 'features/viajes/data/repositories/ruta_repository_impl.dart';
+import 'features/viajes/data/servicios/servicio_ubicacion_impl.dart';
+import 'features/viajes/data/repositories/viaje_repository_impl.dart';
+import 'features/viajes/domain/repositories/ajuste_viaje_repository.dart';
+import 'features/viajes/domain/repositories/costo_viaje_repository.dart';
+import 'features/viajes/domain/repositories/hito_repository.dart';
+import 'features/viajes/domain/repositories/rentabilidad_repository.dart';
+import 'features/viajes/domain/repositories/ruta_repository.dart';
+import 'features/viajes/domain/servicios/servicio_ubicacion.dart';
+import 'features/viajes/domain/repositories/viaje_repository.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,7 +63,52 @@ Future<void> main() async {
     AuthRemoteDataSource(client),
   );
 
-  runApp(OptiRutaApp(authRepository: authRepository));
+  runApp(
+    MultiRepositoryProvider(
+      providers: <RepositoryProvider<Object>>[
+        RepositoryProvider<VehiculoRepository>(
+          create: (_) =>
+              VehiculoRepositoryImpl(VehiculoRemoteDataSource(client)),
+        ),
+        RepositoryProvider<ConductorRepository>(
+          create: (_) =>
+              ConductorRepositoryImpl(ConductorRemoteDataSource(client)),
+        ),
+        RepositoryProvider<ClienteRepository>(
+          create: (_) => ClienteRepositoryImpl(ClienteRemoteDataSource(client)),
+        ),
+        RepositoryProvider<NotificacionRepository>(
+          create: (_) =>
+              NotificacionRepositoryImpl(NotificacionRemoteDataSource(client)),
+        ),
+        RepositoryProvider<ViajeRepository>(
+          create: (_) => ViajeRepositoryImpl(ViajeRemoteDataSource(client)),
+        ),
+        RepositoryProvider<HitoRepository>(
+          create: (_) => HitoRepositoryImpl(HitoRemoteDataSource(client)),
+        ),
+        RepositoryProvider<AjusteViajeRepository>(
+          create: (_) =>
+              AjusteViajeRepositoryImpl(AjusteViajeRemoteDataSource(client)),
+        ),
+        RepositoryProvider<CostoViajeRepository>(
+          create: (_) =>
+              CostoViajeRepositoryImpl(CostoViajeRemoteDataSource(client)),
+        ),
+        RepositoryProvider<RentabilidadRepository>(
+          create: (_) =>
+              RentabilidadRepositoryImpl(RentabilidadRemoteDataSource(client)),
+        ),
+        RepositoryProvider<ServicioUbicacion>(
+          create: (_) => const ServicioUbicacionImpl(),
+        ),
+        RepositoryProvider<RutaRepository>(
+          create: (_) => RutaRepositoryImpl(RutaRemoteDataSource(client)),
+        ),
+      ],
+      child: OptiRutaApp(authRepository: authRepository),
+    ),
+  );
 }
 
 /// Raiz de la app. Recibe el [AuthRepository] por constructor (DI): en produccion
@@ -45,6 +123,7 @@ class OptiRutaApp extends StatelessWidget {
     return BlocProvider<AuthCubit>(
       create: (_) => AuthCubit(
         iniciarSesion: IniciarSesionUseCase(authRepository),
+        iniciarConGoogle: IniciarConGoogleUseCase(authRepository),
         registrarse: RegistrarseUseCase(authRepository),
         cerrarSesion: CerrarSesionUseCase(authRepository),
         observarSesion: ObservarSesionUseCase(authRepository),

@@ -56,6 +56,12 @@ abstract final class AppTheme {
         centerTitle: false,
       ),
       inputDecorationTheme: _inputDecorationTheme,
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.onPrimary,
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
+      ),
     );
   }
 

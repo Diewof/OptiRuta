@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/sesion.dart';
 import '../../domain/errores/auth_failure.dart';
 import '../../domain/usecases/cerrar_sesion_use_case.dart';
+import '../../domain/usecases/iniciar_con_google_use_case.dart';
 import '../../domain/usecases/iniciar_sesion_use_case.dart';
 import '../../domain/usecases/observar_sesion_use_case.dart';
 import '../../domain/usecases/recuperar_password_use_case.dart';
@@ -24,11 +25,13 @@ import 'auth_state.dart';
 class AuthCubit extends Cubit<AuthState> {
   AuthCubit({
     required IniciarSesionUseCase iniciarSesion,
+    required IniciarConGoogleUseCase iniciarConGoogle,
     required RegistrarseUseCase registrarse,
     required CerrarSesionUseCase cerrarSesion,
     required ObservarSesionUseCase observarSesion,
     required RecuperarPasswordUseCase recuperarPassword,
   }) : _iniciarSesion = iniciarSesion,
+       _iniciarConGoogle = iniciarConGoogle,
        _registrarse = registrarse,
        _cerrarSesion = cerrarSesion,
        _observarSesion = observarSesion,
@@ -44,6 +47,7 @@ class AuthCubit extends Cubit<AuthState> {
   }
 
   final IniciarSesionUseCase _iniciarSesion;
+  final IniciarConGoogleUseCase _iniciarConGoogle;
   final RegistrarseUseCase _registrarse;
   final CerrarSesionUseCase _cerrarSesion;
   final ObservarSesionUseCase _observarSesion;
@@ -72,6 +76,19 @@ class AuthCubit extends Cubit<AuthState> {
     try {
       await _iniciarSesion(correo: correo, contrasena: contrasena);
       // El estado AuthAutenticado lo emite _alCambiarSesion via el stream.
+    } on AuthFailure catch (falla) {
+      _fallarOperacion(falla);
+    } catch (_) {
+      _fallarOperacion(AuthFailure.desconocido());
+    }
+  }
+
+  /// Abre el flujo de Google en el navegador. No emite `AuthAutenticando`: si
+  /// la persona cancela en el navegador no hay callback y el spinner quedaria
+  /// colgado. La sesion llega por el stream al volver por el deep link.
+  Future<void> iniciarConGoogle() async {
+    try {
+      await _iniciarConGoogle();
     } on AuthFailure catch (falla) {
       _fallarOperacion(falla);
     } catch (_) {

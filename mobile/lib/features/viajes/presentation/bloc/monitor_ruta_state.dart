@@ -1,0 +1,40 @@
+import 'package:equatable/equatable.dart';
+
+import '../../domain/entities/coordenada.dart';
+import '../../domain/entities/tipo_alerta_viaje.dart';
+
+sealed class MonitorRutaState extends Equatable {
+  const MonitorRutaState();
+
+  @override
+  List<Object?> get props => <Object?>[];
+}
+
+/// Pidiendo el permiso o esperando la primera posición.
+class MonitorRutaIniciando extends MonitorRutaState {
+  const MonitorRutaIniciando();
+}
+
+/// Sin permiso de ubicación: el mapa sigue mostrando la ruta, sin marcador.
+class MonitorRutaSinPermiso extends MonitorRutaState {
+  const MonitorRutaSinPermiso({required this.bloqueado});
+
+  /// `true` si hay que ir a los ajustes del sistema (negado para siempre o
+  /// GPS apagado).
+  final bool bloqueado;
+
+  @override
+  List<Object?> get props => <Object?>[bloqueado];
+}
+
+class MonitorRutaActivo extends MonitorRutaState {
+  const MonitorRutaActivo({this.posicion, this.alerta});
+
+  final Coordenada? posicion;
+
+  /// Última situación detectada; se limpia cuando el conductor la descarta.
+  final TipoAlertaViaje? alerta;
+
+  @override
+  List<Object?> get props => <Object?>[posicion, alerta];
+}

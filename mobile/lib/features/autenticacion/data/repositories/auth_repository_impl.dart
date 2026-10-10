@@ -46,6 +46,19 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<void> iniciarConGoogle() async {
+    final bool abierto;
+    try {
+      abierto = await _remote.iniciarConGoogle();
+    } on AuthException catch (e) {
+      throw _traducirAuthException(e);
+    } on SocketException {
+      throw AuthFailure.sinConexion();
+    }
+    if (!abierto) throw AuthFailure.desconocido();
+  }
+
+  @override
   Future<Sesion?> registrarse({
     required String nombre,
     required String correo,

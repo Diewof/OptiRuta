@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
@@ -31,9 +32,9 @@ class AppAlert extends StatelessWidget {
   };
 
   IconData get _icono => switch (tono) {
-    AppAlertTono.error => Icons.error_outline,
-    AppAlertTono.advertencia => Icons.warning_amber_outlined,
-    AppAlertTono.exito => Icons.check_circle_outline,
+    AppAlertTono.error => LucideIcons.circleAlert,
+    AppAlertTono.advertencia => LucideIcons.triangleAlert,
+    AppAlertTono.exito => LucideIcons.circleCheck,
   };
 
   @override
@@ -45,7 +46,7 @@ class AppAlert extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.card,
           borderRadius: AppRadius.mdAll,
-          border: Border(left: BorderSide(color: _acento, width: 3)),
+          border: Border(left: BorderSide(color: _acento, width: 4)),
         ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(

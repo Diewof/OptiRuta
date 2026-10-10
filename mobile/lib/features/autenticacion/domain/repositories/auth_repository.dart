@@ -13,6 +13,10 @@ abstract interface class AuthRepository {
     required String contrasena,
   });
 
+  /// Lanza el flujo OAuth de Google en el navegador. No devuelve sesion: al
+  /// volver del navegador la sesion llega por [observarSesion].
+  Future<void> iniciarConGoogle();
+
   /// Registra una cuenta nueva (siempre rol CONDUCTOR; el rol lo fija el
   /// servidor). Devuelve la [Sesion] si el proveedor entrega sesion inmediata,
   /// o `null` si queda pendiente de confirmacion por correo.

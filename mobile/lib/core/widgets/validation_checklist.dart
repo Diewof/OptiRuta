@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
@@ -70,7 +71,7 @@ class _ValidRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               const Icon(
-                Icons.check_circle_outline,
+                LucideIcons.circleCheck,
                 size: 16,
                 color: AppColors.success,
               ),
@@ -113,10 +114,10 @@ class _ChecklistRow extends StatelessWidget {
         : AppColors.textSecondary;
 
     final IconData icon = ok
-        ? Icons.check_circle_outline
+        ? LucideIcons.circleCheck
         : showErrors
-        ? Icons.cancel_outlined
-        : Icons.radio_button_unchecked;
+        ? LucideIcons.circleX
+        : LucideIcons.circle;
 
     final String estado = ok
         ? 'cumplido'

@@ -1,7 +1,9 @@
 # Sistema de Diseño — OptiRuta
 
+> **v2 (aprobada 2026-10).** Esta versión incorpora el rediseño visual. El detalle de tokens, iconos, movimiento, reglas de estimado/real y semáforo está en [`../Diseno-v2/sistema-de-diseno-v2.md`](../Diseno-v2/sistema-de-diseno-v2.md), con prototipos interactivos en `../Diseno-v2/pantallas/`. Donde este archivo y el de v2 difieran, manda v2.
+
 Fuente única de verdad para color, tipografía, espaciado, bordes, radios, sombras,
-componentes y accesibilidad de la app Flutter. Consolida:
+componentes y accesibilidad de la app Flutter. Consolida (la autoridad de diseño pasó a ser el brief de rediseño y `Diseno-v2`; lo de abajo es el punto de partida ya actualizado):
 
 1. **`Instrucciones de Identidad Visual.md`** y la sección *Identidad visual* de `CLAUDE.md` — **autoridad**. Ante conflicto, mandan estos documentos.
 2. Skills de estándar de diseño móvil instaladas en `.agents/skills/` (`mobile-app-ui-design`, `mobile-app-design-standards`) — **complemento** en lo que no contradiga a (1): grilla de espaciado, tamaños de *touch target*, contraste WCAG, diseño atómico de componentes, estados de pantalla, rendimiento percibido, accesibilidad.
@@ -97,7 +99,7 @@ Alto de la banda (más el inset de estado):
 Sin uso `assets/decor/truck.png` y `BrandMasthead` (masthead grande descartado;
 `AuthHero` no lo reintroduce).
 
-- **Botón primario con degradado** `authGradientStart → authGradientMid → authGradientEnd` (navy → azul de acción → azul claro), alto 52, `radius.lg`, icono de flecha opcional a la derecha. **Solo en auth**; el primario de la app operativa sigue siendo `color.action` plano.
+- **Botón primario plano**, igual que en el resto de la app: `color.action` (#1E3A5F), alto 56, `radius.md`, icono de flecha opcional a la derecha. El degradado de autenticación y su color de tránsito (#2C5A8F, fuera de la paleta) se eliminaron en la v2.
 - **"Continuar con Google"** (solo en login): acceso federado fuera del MVP. Se muestra **deshabilitado** con tooltip "Disponible próximamente" hasta que se habilite el proveedor OAuth de Google en Supabase Auth.
 
 ---
@@ -113,14 +115,15 @@ Pesos (de Identidad Visual): **SemiBold/Bold** títulos · **Medium** etiquetas 
 
 | Token | Tamaño / línea | Peso | Uso |
 |---|---|---|---|
-| `type.display` | 28 / 34 | Bold | Cifra clave única de dashboard (KPI grande). Uso escaso. |
+| `type.hero` | 36 / 42 | Bold | Solo el número de rentabilidad. |
+| `type.display` | 28 / 34 | Bold | Cifra clave de dashboard, saludo. Uso escaso. |
 | `type.title` | 20 / 26 | SemiBold | Título de pantalla, encabezado de sección. |
-| `type.subtitle` | 16 / 22 | Medium | Encabezado de card, subtítulos. |
+| `type.subtitle` | 16 / 22 | SemiBold | Encabezado de card, subtítulos. |
 | `type.body` | 14 / 20 | Regular | Contenido, valores de formulario, celdas de tabla. |
 | `type.label` | 12 / 16 | Medium | Labels de campo, encabezados de tabla, texto de badge. |
 | `type.caption` | 11 / 14 | Regular | Metadatos, ayudas, timestamps. Mínimo absoluto. |
 
-Reconciliación con el skill (`máx. 4 tamaños`): un centro de control con datos densos justifica 6 escalones; **no más de 6**, y nunca crear tamaños fuera de esta tabla. Cuerpo mínimo 14 (14 = mínimo absoluto del skill); preferir 16 para lectura primaria prolongada. Jerarquía por tamaño + peso + `color.text.secondary`, no poniendo todo en negrita.
+Reconciliación con el skill (`máx. 4 tamaños`): un centro de control con datos densos justifica 6 escalones; **no más de 7**, y nunca crear tamaños fuera de esta tabla. Cuerpo mínimo 14 (14 = mínimo absoluto del skill); preferir 16 para lectura primaria prolongada. Jerarquía por tamaño + peso + `color.text.secondary`, no poniendo todo en negrita.
 
 Soportar escalado de fuente del sistema (Flutter respeta `MediaQuery.textScaler`): no fijar alturas de fila/botón en píxeles rígidos que corten texto al 130 %.
 
@@ -138,10 +141,9 @@ Soportar escalado de fuente del sistema (Flutter respeta `MediaQuery.textScaler`
 - Padding horizontal de pantalla: **16**.
 - Separación mínima entre *touch targets*: **8**.
 
-### Radios — "ligeramente redondeado, no pill"
+### Radios — «cercano, sin perder seriedad» (v2)
 
-`radius.sm = 4` (badges, chips) · `radius.md = 6` (botones, inputs) · `radius.lg = 8` (cards, hojas, diálogos).
-**Máximo 8.** No usar radios tipo `rounded-2xl/3xl` del skill (estética de consumo) — ver [No adoptar](#no-adoptar).
+`radius.sm = 6` (barras, marcas) · `radius.md = 12` (botones, inputs, miniaturas, fichas de icono) · `radius.lg = 16` (cards) · `radius.xl = 24` (hoja inferior, cabecera del conductor) · `radius.pill` (badges, chips, semáforo). Los **botones nunca son pill**.
 
 ### Bordes
 
@@ -150,11 +152,13 @@ Soportar escalado de fuente del sistema (Flutter respeta `MediaQuery.textScaler`
 - Tabla: solo `color.divider.table` de 1 px entre filas. Sin bordes exteriores pesados.
 - Franja de estado en card: barra lateral (izquierda) o superior de 3–4 px con el color de estado.
 
-### Sombra — un solo token
+### Elevación — dos niveles
 
-`elevation.card`: `y=1, blur=3, spread=0, color=#14273F @ 8%`.
-`elevation.overlay` (hojas, menús, diálogos): `y=4, blur=12, color=#14273F @ 12%`.
-Nada más. Sin *glow*, sin *inner shadow* decorativa, sin sombras de color neón.
+`elevation.card`: `0 1 2` + `0 4 14`, navy @ 6–7 %. `elevation.float` (hoja inferior, avisos, tarjeta de rentabilidad del dashboard): `0 8 28`, navy @ 22 %. Nada más. Sin *glow*, sin sombras de color, sin sombra propia en el botón primario.
+
+### Movimiento
+
+Tokens `AppMotion`: `fast 120 ms`, `base 200 ms`, `slow 300 ms`, `count 600 ms` (solo el conteo de rentabilidad, una vez por carga); curvas `easeOut = cubic(.2,.8,.2,1)` y `easeInOut = cubic(.4,0,.2,1)`; escalonado de 40 ms (máx. 5). Con «reducir movimiento» (`MediaQuery.disableAnimations`) todo vale 0 ms. Prohibido: confeti, rebotes, paralaje, bucles decorativos, esperas forzadas, transiciones > 400 ms.
 
 ---
 
@@ -194,8 +198,8 @@ Organización: **átomos → moléculas → organismos**, presentacional vs. con
 | **Input de texto** | Fondo blanco, borde `color.border.input`, label `type.label` siempre visible arriba, alto ≥ 48, `radius.md`. Estado error: borde `color.state.error` + texto de error `type.caption` en rojo debajo. |
 | **Valor automático vs. manual** | Campo con **valor estimado/automático**: fondo `color.surface.canvas`, icono de "calculado" y label "Estimado", editable pero visualmente distinto. Campo **ingresado por el usuario / valor real**: fondo blanco, borde pleno. Nunca deben verse iguales (regla de dominio: pares `valor_estimado` / `valor_real`). `viaje.valor_flete` usa siempre el estilo de **valor ingresado por el usuario** (fondo blanco, borde pleno): es un monto pactado con el cliente, no un par estimado/real. |
 | **Selector / dropdown** | Preferir sobre escritura libre. Muestra valor precargado por defecto. Icono chevron outline. |
-| **Badge de estado** | `radius.sm`, `type.label`, relleno del color de estado al 12–16 % con **texto e icono del color de estado a intensidad plena** o texto `#14273F`. Sobre ámbar de advertencia, texto oscuro; blanco solo sobre verde o rojo de error. |
-| **Icono** | Outline, trazo uniforme, 24 dp. Camión para vehículo/módulo de vehículos y como marcador animado del banner de autenticación. Set: vehículo, ruta, conductor, carga, mantenimiento, documento, ubicación, reporte, alerta, ACPM, peaje. |
+| **Badge de estado** | Pill, `type.label`. Verde y rojo: relleno tinte con icono del color de estado y texto `#14273F`. **Ámbar: relleno sólido con texto e icono `#14273F`** (el icono ámbar sobre su tinte no llega a 3:1). Semáforo de rentabilidad: glifos de color pleno con forma propia (check · triángulo · ✕ · discontinuo). Ciclo del viaje: neutros y azul de acción, nunca colores de semáforo. |
+| **Icono** | Familia propia de dominio en SVG (`MarcaIcon`, `assets/icons/`, trazo 1,75, nodo de ruta como rasgo; contorno y relleno para el destino activo) + `LucideIcons` para los genéricos de interfaz. |
 
 ### Moléculas / organismos
 
@@ -203,7 +207,7 @@ Organización: **átomos → moléculas → organismos**, presentacional vs. con
 |---|---|
 | **Card** | Fondo blanco, `radius.lg`, 1 px `color.border.card`, `elevation.card`, padding 16. Franja lateral/superior de estado cuando aplique. Uso: dashboard, viajes activos, vehículos, conductores, resúmenes. |
 | **Tabla** | Encabezado fijo en scroll (`type.label`, fondo `color.surface.canvas`). Filas separadas por `color.divider.table`. Numéricos a la derecha con cifras tabulares. Estado = badge en celda, **no** fila coloreada. Paginada (`page`, `size`). |
-| **Encabezado de pantalla** | Fondo `color.brand.steel`, título `type.title` blanco, back arriba-izquierda, acción contextual arriba-derecha (máx. 1). |
+| **Encabezado de pantalla** | Fondo `color.brand.navy`, título `type.title` blanco, back arriba-izquierda, acción contextual arriba-derecha (máx. 1). |
 | **Navegación inferior** | Fija, 4–5 destinos por rol, **icono outline + texto** (`type.caption`), activo en `color.brand.red` (icono + label + franja superior de 2 px), resto `color.text.secondary`. Consistente entre pantallas. |
 | **Alerta / banner** | Borde izquierdo 3 px del color de estado, fondo blanco, icono + título `type.label` + cuerpo `type.body`. No ocupa fondo completo. No oculta contenido clave. |
 

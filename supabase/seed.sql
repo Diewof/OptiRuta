@@ -192,10 +192,10 @@ values
   ('33333333-3333-3333-3333-333333333333', 'DEMO-XEJ344', date '2030-01-01', 'COMISION', 10, 0, true),
   ('44444444-4444-4444-4444-444444444444', 'DEMO-TNB574', date '2030-01-01', 'COMISION', 10, 0, true);
 
-insert into public.cliente (nombre, activo)
+insert into public.cliente (nombre, documento, telefono, direccion, activo)
 values
-  ('Cliente Demo - XEJ344', true),
-  ('Cliente Demo - TNB574', true);
+  ('Cliente Demo - XEJ344', '900111222-1', '3001112233', 'Cra 1 # 1-01, Medellin', true),
+  ('Cliente Demo - TNB574', '900333444-2', '3004445566', 'Cra 2 # 2-02, Medellin', true);
 
 
 -- Viajes historicos reales (bitacora 2025-09 a 2026-08), importados desde

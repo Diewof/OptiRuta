@@ -1,0 +1,14 @@
+import '../entities/rentabilidad_consolidada.dart';
+import '../entities/rentabilidad_marginal.dart';
+
+/// Contrato sobre las RPC de rentabilidad. Dos funciones separadas
+/// (marginal/consolidada), no un motor genérico (patrón Strategy acotado,
+/// ver CLAUDE.md "Patrones").
+abstract interface class RentabilidadRepository {
+  Future<RentabilidadMarginal> marginal(String viajeId);
+
+  Future<RentabilidadConsolidada> consolidada({
+    required DateTime desde,
+    required DateTime hasta,
+  });
+}

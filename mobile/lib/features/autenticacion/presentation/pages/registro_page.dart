@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../core/accessibility/announce.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -131,7 +132,7 @@ class _RegistroPageState extends State<RegistroPage> {
               label: 'Nombre completo',
               controller: _nombre,
               focusNode: _nombreFocus,
-              prefixIcon: Icons.person_outline,
+              prefixIcon: LucideIcons.user,
               rules: AuthFieldRules.nombre,
               showRuleErrors: _submitted,
               validMessage: 'Nombre válido',
@@ -145,7 +146,7 @@ class _RegistroPageState extends State<RegistroPage> {
               label: 'Correo electrónico',
               controller: _correo,
               focusNode: _correoFocus,
-              prefixIcon: Icons.mail_outline,
+              prefixIcon: LucideIcons.mail,
               rules: AuthFieldRules.correo,
               showRuleErrors: _submitted,
               validMessage: 'Correo válido',
@@ -159,7 +160,7 @@ class _RegistroPageState extends State<RegistroPage> {
               label: 'Contraseña',
               controller: _contrasena,
               focusNode: _contrasenaFocus,
-              prefixIcon: Icons.lock_outline,
+              prefixIcon: LucideIcons.lock,
               rules: AuthFieldRules.contrasena,
               showRuleErrors: _submitted,
               validMessage: 'Contraseña válida',
@@ -173,7 +174,7 @@ class _RegistroPageState extends State<RegistroPage> {
               label: 'Confirmar contraseña',
               controller: _confirmar,
               focusNode: _confirmarFocus,
-              prefixIcon: Icons.lock_outline,
+              prefixIcon: LucideIcons.lock,
               rules: _confirmarRules,
               showRuleErrors: _submitted,
               validMessage: 'Las contraseñas coinciden',
