@@ -29,8 +29,8 @@ abstract final class ViajeResumenModel {
       nombreCliente: cliente['nombre'] as String,
       fechaSalidaProgramada: fila['fecha_salida_programada'] == null
           ? null
-          : DateTime.parse(fila['fecha_salida_programada'] as String),
-      fechaCreacion: DateTime.parse(fila['fecha_creacion'] as String),
+          : DateTime.parse(fila['fecha_salida_programada'] as String).toLocal(),
+      fechaCreacion: DateTime.parse(fila['fecha_creacion'] as String).toLocal(),
       tiempoEstimadoMin: (fila['tiempo_estimado_min'] as num?)?.toDouble(),
       distanciaEstimada: (fila['distancia_estimada'] as num?)?.toDouble(),
       pesoCarga: (fila['peso_carga'] as num?)?.toDouble(),

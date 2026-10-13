@@ -5,13 +5,18 @@ import 'package:mocktail/mocktail.dart';
 import 'package:optiruta/features/viajes/domain/detector_ruta.dart';
 import 'package:optiruta/features/viajes/domain/entities/coordenada.dart';
 import 'package:optiruta/features/viajes/domain/entities/tipo_alerta_viaje.dart';
+import 'package:optiruta/features/viajes/domain/repositories/ubicacion_viaje_repository.dart';
 import 'package:optiruta/features/viajes/domain/repositories/viaje_repository.dart';
 import 'package:optiruta/features/viajes/domain/servicios/servicio_ubicacion.dart';
 import 'package:optiruta/features/viajes/domain/usecases/registrar_alerta_viaje_use_case.dart';
+import 'package:optiruta/features/viajes/domain/usecases/ubicacion_viaje_use_cases.dart';
 import 'package:optiruta/features/viajes/presentation/bloc/monitor_ruta_cubit.dart';
 import 'package:optiruta/features/viajes/presentation/bloc/monitor_ruta_state.dart';
 
 class _MockViajeRepository extends Mock implements ViajeRepository {}
+
+class _MockUbicacionRepository extends Mock
+    implements UbicacionViajeRepository {}
 
 class _ServicioFalso implements ServicioUbicacion {
   _ServicioFalso(this.permiso);
@@ -36,9 +41,20 @@ const List<Coordenada> _ruta = <Coordenada>[Coordenada(0, 0), Coordenada(0, 1)];
 void main() {
   late _MockViajeRepository repo;
   late DateTime reloj;
+  late _MockUbicacionRepository ubicacionRepo;
 
   setUp(() {
     repo = _MockViajeRepository();
+    ubicacionRepo = _MockUbicacionRepository();
+    registerFallbackValue(_aqui);
+    when(() => ubicacionRepo.consentimientoVigente())
+        .thenAnswer((_) async => true);
+    when(
+      () => ubicacionRepo.registrarPunto(
+        viajeId: any(named: 'viajeId'),
+        posicion: any(named: 'posicion'),
+      ),
+    ).thenAnswer((_) async => true);
     reloj = DateTime(2026, 10, 8, 8);
     registerFallbackValue(TipoAlertaViaje.paradaProlongada);
     registerFallbackValue(_aqui);
@@ -56,6 +72,13 @@ void main() {
     ubicacion: servicio,
     detector: DetectorRuta(ruta: _ruta),
     registrarAlerta: RegistrarAlertaViajeUseCase(repo),
+    consultarConsentimiento: ConsultarConsentimientoUbicacionUseCase(
+      ubicacionRepo,
+    ),
+    responderConsentimiento: ResponderConsentimientoUbicacionUseCase(
+      ubicacionRepo,
+    ),
+    registrarUbicacion: RegistrarUbicacionViajeUseCase(ubicacionRepo),
     ahora: () => reloj,
   );
 
@@ -90,7 +113,10 @@ void main() {
 
     await emitir(servicio, _aqui);
 
-    expect(cubit.state, const MonitorRutaActivo(posicion: _aqui));
+    expect(
+      cubit.state,
+      const MonitorRutaActivo(posicion: _aqui, registrando: true),
+    );
     verifyNever(
       () => repo.registrarAlerta(
         viajeId: any(named: 'viajeId'),
@@ -157,6 +183,71 @@ void main() {
 
     cubit.descartarAlerta();
 
-    expect(cubit.state, const MonitorRutaActivo(posicion: _aqui));
+    expect(
+      cubit.state,
+      const MonitorRutaActivo(posicion: _aqui, registrando: true),
+    );
   });
+
+  test(
+    'RF-21: con consentimiento envía el punto al recibir la primera posición',
+    () async {
+      final servicio = _ServicioFalso(EstadoPermisoUbicacion.concedido);
+      final cubit = crear(servicio);
+      addTearDown(cubit.close);
+
+      await cubit.iniciar();
+      await emitir(servicio, _aqui);
+
+      verify(
+        () => ubicacionRepo.registrarPunto(viajeId: 'v-1', posicion: _aqui),
+      ).called(1);
+      expect((cubit.state as MonitorRutaActivo).registrando, isTrue);
+    },
+  );
+
+  test('RF-23: sin consentimiento pregunta y no envía ningún punto', () async {
+    when(() => ubicacionRepo.consentimientoVigente())
+        .thenAnswer((_) async => false);
+    final servicio = _ServicioFalso(EstadoPermisoUbicacion.concedido);
+    final cubit = crear(servicio);
+    addTearDown(cubit.close);
+
+    await cubit.iniciar();
+    await emitir(servicio, _aqui);
+
+    final MonitorRutaActivo estado = cubit.state as MonitorRutaActivo;
+    expect(estado.consentimientoPendiente, isTrue);
+    expect(estado.registrando, isFalse);
+    verifyNever(
+      () => ubicacionRepo.registrarPunto(
+        viajeId: any(named: 'viajeId'),
+        posicion: any(named: 'posicion'),
+      ),
+    );
+  });
+
+  test(
+    'RF-23: al aceptar se guarda el consentimiento y empieza a enviar',
+    () async {
+      when(() => ubicacionRepo.consentimientoVigente())
+          .thenAnswer((_) async => false);
+      when(() => ubicacionRepo.responderConsentimiento(acepta: true))
+          .thenAnswer((_) async => true);
+      final servicio = _ServicioFalso(EstadoPermisoUbicacion.concedido);
+      final cubit = crear(servicio);
+      addTearDown(cubit.close);
+
+      await cubit.iniciar();
+      await emitir(servicio, _aqui);
+      await cubit.responderConsentimiento(acepta: true);
+
+      final MonitorRutaActivo estado = cubit.state as MonitorRutaActivo;
+      expect(estado.consentimientoPendiente, isFalse);
+      expect(estado.registrando, isTrue);
+      verify(
+        () => ubicacionRepo.registrarPunto(viajeId: 'v-1', posicion: _aqui),
+      ).called(1);
+    },
+  );
 }

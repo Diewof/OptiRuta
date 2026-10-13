@@ -2,11 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:optiruta/features/viajes/domain/repositories/ubicacion_viaje_repository.dart';
+import 'package:optiruta/features/viajes/presentation/bloc/monitor_ruta_registro.dart';
 import 'package:optiruta/core/error/catalogo_failure.dart';
 import 'package:optiruta/core/theme/app_theme.dart';
 import 'package:optiruta/features/autenticacion/domain/entities/rol_usuario.dart';
 import 'package:optiruta/features/autenticacion/domain/entities/usuario.dart';
 import 'package:optiruta/features/vehiculos/domain/entities/tipo_vehiculo.dart';
+import 'package:optiruta/features/checklist/domain/entities/checklist.dart';
+import 'package:optiruta/features/checklist/domain/repositories/checklist_repository.dart';
 import 'package:optiruta/features/viajes/domain/entities/categoria_costo.dart';
 import 'package:optiruta/features/viajes/domain/entities/costo_viaje.dart';
 import 'package:optiruta/features/viajes/domain/entities/coordenada.dart';
@@ -27,6 +31,8 @@ class _MockViajeRepository extends Mock implements ViajeRepository {}
 class _MockHitoRepository extends Mock implements HitoRepository {}
 
 class _MockCostoViajeRepository extends Mock implements CostoViajeRepository {}
+
+class _MockChecklistRepository extends Mock implements ChecklistRepository {}
 
 const Usuario _usuario = Usuario(
   id: 'u-1',
@@ -60,11 +66,15 @@ const CostoViaje _acpm = CostoViaje(
 
 class _MockServicioUbicacion extends Mock implements ServicioUbicacion {}
 
+class _MockUbicacionViajeRepository extends Mock
+    implements UbicacionViajeRepository {}
+
 void main() {
   late _MockViajeRepository viajeRepo;
   late _MockHitoRepository hitoRepo;
   late _MockCostoViajeRepository costoRepo;
   late _MockServicioUbicacion ubicacion;
+  late _MockChecklistRepository checklistRepo;
   late List<Hito> hitos;
   late List<CostoViaje> costos;
 
@@ -79,6 +89,9 @@ void main() {
     hitoRepo = _MockHitoRepository();
     costoRepo = _MockCostoViajeRepository();
     ubicacion = _MockServicioUbicacion();
+    checklistRepo = _MockChecklistRepository();
+    when(() => checklistRepo.ultimoDelViaje(any()))
+        .thenAnswer((_) async => null);
     when(() => ubicacion.solicitarPermiso())
         .thenAnswer((_) async => EstadoPermisoUbicacion.concedido);
     when(() => ubicacion.posicionActual())
@@ -166,8 +179,16 @@ void main() {
         providers: <RepositoryProvider<Object>>[
           RepositoryProvider<ViajeRepository>.value(value: viajeRepo),
           RepositoryProvider<ServicioUbicacion>.value(value: ubicacion),
+          RepositoryProvider<MonitorRutaRegistro>.value(
+            value: MonitorRutaRegistro(
+              ubicacion: ubicacion,
+              viajes: viajeRepo,
+              ubicaciones: _MockUbicacionViajeRepository(),
+            ),
+          ),
           RepositoryProvider<HitoRepository>.value(value: hitoRepo),
           RepositoryProvider<CostoViajeRepository>.value(value: costoRepo),
+          RepositoryProvider<ChecklistRepository>.value(value: checklistRepo),
         ],
         child: MaterialApp(
           theme: AppTheme.light,
@@ -315,5 +336,84 @@ void main() {
 
     expect(find.text('Reintentar'), findsOneWidget);
     expect(find.text('Lo que registraste sigue guardado'), findsOneWidget);
+  });
+
+  group('checklist antes de la salida', () {
+    final ViajeResumen asignado = ViajeResumen(
+      id: 'v-1',
+      remision: 'REM-1',
+      origen: 'Medellín',
+      destino: 'Cartagena',
+      estado: EstadoViaje.asignado,
+      placaVehiculo: 'SXK418',
+      nombreConductor: 'Carlos Conductor',
+      nombreCliente: 'Cementos del Norte',
+      fechaCreacion: DateTime(2026, 10, 1),
+      tipoVehiculo: TipoVehiculo.dobleTroque,
+    );
+
+    ChecklistViaje checklist(
+      ResultadoChecklist resultado, {
+      String? motivo,
+      Duration hace = const Duration(minutes: 5),
+    }) => ChecklistViaje(
+      id: 'k-1',
+      viajeId: 'v-1',
+      fechaHora: DateTime.now().subtract(hace),
+      resultado: resultado,
+      motivoAutorizacion: motivo,
+    );
+
+    setUp(() {
+      when(() => viajeRepo.listarActivos()).thenAnswer((_) async => [asignado]);
+    });
+
+    testWidgets('sin checklist la acción principal es hacerlo', (
+      WidgetTester tester,
+    ) async {
+      await montar(tester);
+
+      expect(find.text('Hacer checklist del vehículo'), findsOneWidget);
+      expect(find.text('Registrar salida'), findsNothing);
+    });
+
+    testWidgets('con el checklist vencido hay que repetirlo', (
+      WidgetTester tester,
+    ) async {
+      when(() => checklistRepo.ultimoDelViaje('v-1')).thenAnswer(
+        (_) async => checklist(
+          ResultadoChecklist.aprobado,
+          hace: const Duration(hours: 13),
+        ),
+      );
+      await montar(tester);
+
+      expect(find.text('Hacer checklist del vehículo'), findsOneWidget);
+    });
+
+    testWidgets('una falla crítica sin autorizar espera al administrador', (
+      WidgetTester tester,
+    ) async {
+      when(() => checklistRepo.ultimoDelViaje('v-1'))
+          .thenAnswer((_) async => checklist(ResultadoChecklist.bloqueado));
+      await montar(tester);
+
+      expect(find.text('Revisar si ya me autorizaron'), findsOneWidget);
+      expect(find.text('Checklist con falla crítica'), findsOneWidget);
+      expect(find.text('Registrar salida'), findsNothing);
+    });
+
+    testWidgets('checklist aprobado o autorizado permite registrar la salida', (
+      WidgetTester tester,
+    ) async {
+      when(() => checklistRepo.ultimoDelViaje('v-1')).thenAnswer(
+        (_) async =>
+            checklist(ResultadoChecklist.bloqueado, motivo: 'Frenos revisados'),
+      );
+      await montar(tester);
+
+      expect(find.text('Registrar salida'), findsOneWidget);
+      expect(find.text('Salida autorizada'), findsOneWidget);
+    });
   });
 }

@@ -32,7 +32,15 @@ void main() {
   });
 
   test('listar: mapea filas y detecta hayMas cuando llega tamano+1', () async {
-    when(() => remote.listar(pagina: 0, tamano: 1)).thenAnswer(
+    when(
+      () => remote.listar(
+        pagina: 0,
+        tamano: 1,
+        desde: any(named: 'desde'),
+        hasta: any(named: 'hasta'),
+        soloNoLeidas: any(named: 'soloNoLeidas'),
+      ),
+    ).thenAnswer(
       (_) async => <Map<String, dynamic>>[_fila(), _fila(id: 'n-2')],
     );
 
@@ -44,7 +52,15 @@ void main() {
   });
 
   test('listar: una alerta de ruta trae su tipo y su ubicación', () async {
-    when(() => remote.listar(pagina: 0, tamano: 5)).thenAnswer(
+    when(
+      () => remote.listar(
+        pagina: 0,
+        tamano: 5,
+        desde: any(named: 'desde'),
+        hasta: any(named: 'hasta'),
+        soloNoLeidas: any(named: 'soloNoLeidas'),
+      ),
+    ).thenAnswer(
       (_) async => <Map<String, dynamic>>[
         <String, dynamic>{
           ..._fila(),

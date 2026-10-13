@@ -1,10 +1,12 @@
+import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../../domain/entities/coordenada.dart';
 import '../../domain/servicios/servicio_ubicacion.dart';
 
-/// Posición del dispositivo con `geolocator`. Solo primer plano: no hay
-/// servicio en segundo plano, y nada de lo que entrega se guarda.
+/// Posición del dispositivo con `geolocator`. En Android el seguimiento corre
+/// como servicio en primer plano (notificación fija) para seguir con la
+/// pantalla bloqueada o la app minimizada; solo vive mientras haya un oyente.
 class ServicioUbicacionImpl implements ServicioUbicacion {
   const ServicioUbicacionImpl();
 
@@ -38,13 +40,26 @@ class ServicioUbicacionImpl implements ServicioUbicacion {
 
   @override
   Stream<Coordenada> posiciones() {
-    return Geolocator.getPositionStream(
-      // 25 m evita ruido de GPS parado y ahorra batería; la parada se detecta
-      // por tiempo sin salir de un radio, no por frecuencia de muestras.
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 25,
-      ),
-    ).map((Position p) => Coordenada(p.latitude, p.longitude));
+    // 25 m evita ruido de GPS parado y ahorra batería; la parada se detecta
+    // por tiempo sin salir de un radio, no por frecuencia de muestras.
+    final LocationSettings ajustes =
+        defaultTargetPlatform == TargetPlatform.android
+        ? AndroidSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 25,
+            foregroundNotificationConfig: const ForegroundNotificationConfig(
+              notificationTitle: 'OptiRuta · viaje en curso',
+              notificationText: 'Compartiendo tu ubicación con la empresa mientras dure el viaje.',
+              notificationChannelName: 'Viaje en curso',
+              enableWakeLock: true,
+              setOngoing: true,
+            ),
+          )
+        : const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 25,
+          );
+    return Geolocator.getPositionStream(locationSettings: ajustes)
+        .map((Position p) => Coordenada(p.latitude, p.longitude));
   }
 }

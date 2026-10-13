@@ -1,10 +1,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Requerido para autenticarse y consumir la API de Supabase. -->
     <uses-permission android:name="android.permission.INTERNET"/>
-    <!-- Posición del conductor en el mapa del viaje (solo con la app abierta;
-         no hay servicio en segundo plano ni se guarda la posición). -->
+    <!-- Posición del conductor durante el viaje (RF-21/22). Con el viaje en
+         curso corre como servicio en primer plano de tipo ubicación, con una
+         notificación fija, para seguir con la pantalla bloqueada. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <application
         android:label="optiruta"
         android:name="${applicationName}"

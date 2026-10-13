@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../core/accessibility/announce.dart';
 import '../../../../core/routing/app_routes.dart';
@@ -8,6 +9,7 @@ import '../../../../core/theme/app_motion.dart';
 import '../../../../core/theme/app_radius.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../core/widgets/app_alert.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/brand_mark.dart';
 import '../../../../core/widgets/conductor_scaffold.dart';
@@ -20,6 +22,11 @@ import '../../../../core/widgets/secondary_button.dart';
 import '../../../../core/widgets/skeleton.dart';
 import '../../../../core/widgets/vehiculo_thumb.dart';
 import '../../../autenticacion/domain/entities/usuario.dart';
+import '../../../checklist/domain/entities/checklist.dart';
+import '../../../checklist/domain/repositories/checklist_repository.dart';
+import '../../../checklist/domain/usecases/checklist_use_cases.dart';
+import '../../../checklist/presentation/pages/checklist_page.dart';
+import '../../../vehiculos/domain/entities/tipo_vehiculo.dart';
 import '../../domain/entities/costo_viaje.dart';
 import '../../domain/entities/estado_viaje.dart';
 import '../../domain/entities/hito.dart';
@@ -30,6 +37,7 @@ import '../../domain/repositories/hito_repository.dart';
 import '../../domain/repositories/viaje_repository.dart';
 import '../../domain/servicios/servicio_ubicacion.dart';
 import '../../domain/usecases/actualizar_valor_real_costo_use_case.dart';
+import '../../domain/usecases/agregar_costo_viaje_use_case.dart';
 import '../../domain/usecases/listar_costos_viaje_use_case.dart';
 import '../../domain/usecases/listar_hitos_use_case.dart';
 import '../../domain/usecases/listar_viajes_activos_use_case.dart';
@@ -41,6 +49,8 @@ import '../widgets/costos_viaje_card.dart';
 import '../widgets/hito_timeline.dart';
 import '../widgets/mapa_ruta_viaje.dart';
 import '../widgets/registrar_hito_sheet.dart';
+import '../bloc/monitor_ruta_registro.dart';
+import '../widgets/agregar_costo_sheet.dart';
 import '../widgets/valor_real_sheet.dart';
 
 /// Inicio del Conductor: el viaje activo con su ruta estimada, el hilo de
@@ -71,6 +81,12 @@ class ConductorInicioPage extends StatelessWidget {
         actualizarValorReal: ActualizarValorRealCostoUseCase(
           context.read<CostoViajeRepository>(),
         ),
+        agregarCosto: AgregarCostoViajeUseCase(
+          context.read<CostoViajeRepository>(),
+        ),
+        obtenerChecklist: ObtenerChecklistViajeUseCase(
+          context.read<ChecklistRepository>(),
+        ),
       ),
       child: _InicioView(usuario: usuario),
     );
@@ -87,6 +103,36 @@ class _InicioView extends StatelessWidget {
       if (!hitos.any((Hito h) => h.tipo == t)) return t;
     }
     return null;
+  }
+
+  /// Qué falta antes de poder registrar la salida. La regla real la aplica
+  /// `viaje_iniciar`; esto solo ofrece el paso correcto al conductor.
+  static _PasoSalida _pasoSalida(ConductorViajeListo estado, TipoHito? tipo) {
+    if (tipo != TipoHito.salida ||
+        estado.viaje.estado != EstadoViaje.asignado) {
+      return _PasoSalida.registrar;
+    }
+    final ChecklistViaje? checklist = estado.checklist;
+    if (checklist == null || checklist.estaVencido(DateTime.now())) {
+      return _PasoSalida.hacerChecklist;
+    }
+    return checklist.bloqueaSalida
+        ? _PasoSalida.esperarAutorizacion
+        : _PasoSalida.registrar;
+  }
+
+  Future<void> _hacerChecklist(
+    BuildContext context,
+    ConductorViajeListo estado,
+  ) async {
+    final ConductorViajeCubit cubit = context.read<ConductorViajeCubit>();
+    final ChecklistViaje? hecho = await ChecklistPage.abrir(
+      context,
+      viajeId: estado.viaje.id,
+      tipoVehiculo: estado.viaje.tipoVehiculo ?? TipoVehiculo.dobleTroque,
+      placa: estado.viaje.placaVehiculo,
+    );
+    if (hecho != null) await cubit.cargar(silencioso: true);
   }
 
   Future<void> _registrar(
@@ -110,17 +156,26 @@ class _InicioView extends StatelessWidget {
     final ConductorViajeCubit cubit = context.read<ConductorViajeCubit>();
     final bool? ok = await ValorRealSheet.mostrar(
       context,
-      etiqueta: costo.categoria.etiqueta,
+      etiqueta: costo.etiqueta,
       estimado: costo.valorEstimado,
       valorReal: costo.valorReal,
       alGuardar: (double v) =>
           cubit.confirmarValorReal(costoId: costo.id, valorReal: v),
     );
     if (ok == true && context.mounted) {
-      announceForAccessibility(
-        context,
-        '${costo.categoria.etiqueta} guardado como real',
-      );
+      announceForAccessibility(context, '${costo.etiqueta} guardado como real');
+    }
+  }
+
+  Future<void> _agregarCosto(BuildContext context) async {
+    final ConductorViajeCubit cubit = context.read<ConductorViajeCubit>();
+    final bool? ok = await AgregarCostoSheet.mostrar(
+      context,
+      alGuardar: (String descripcion, double valor) =>
+          cubit.agregarCostoLibre(descripcion: descripcion, valor: valor),
+    );
+    if (ok == true && context.mounted) {
+      announceForAccessibility(context, 'Costo agregado como real');
     }
   }
 
@@ -134,6 +189,9 @@ class _InicioView extends StatelessWidget {
         final TipoHito? siguiente = listo == null
             ? null
             : _siguiente(listo.hitos);
+        final _PasoSalida paso = listo == null
+            ? _PasoSalida.registrar
+            : _pasoSalida(listo, siguiente);
 
         return ConductorScaffold(
           titulo: 'Inicio',
@@ -144,10 +202,22 @@ class _InicioView extends StatelessWidget {
               ? null
               : _AccionPrincipal(
                   siguiente: siguiente,
+                  paso: paso,
                   procesando: listo.procesando,
-                  onPressed: siguiente == null
-                      ? null
-                      : () => _registrar(context, listo, siguiente),
+                  onPressed: switch (paso) {
+                    _PasoSalida.hacerChecklist => () => _hacerChecklist(
+                      context,
+                      listo,
+                    ),
+                    _PasoSalida.esperarAutorizacion =>
+                      () => context.read<ConductorViajeCubit>().cargar(
+                        silencioso: true,
+                      ),
+                    _PasoSalida.registrar =>
+                      siguiente == null
+                          ? null
+                          : () => _registrar(context, listo, siguiente),
+                  },
                 ),
           body: RefreshIndicator(
             onRefresh: () => context.read<ConductorViajeCubit>().cargar(),
@@ -163,10 +233,16 @@ class _InicioView extends StatelessWidget {
                       'Lo que registraste sigue guardado',
                     ConductorViajeSinAsignar() =>
                       'Hoy no tienes viaje por hacer',
-                    ConductorViajeListo() => _subtitulo(
-                      listo!.viaje,
-                      siguiente,
-                    ),
+                    ConductorViajeListo() => switch (paso) {
+                      _PasoSalida.hacerChecklist =>
+                        'Antes de salir, revisa el vehículo',
+                      _PasoSalida.esperarAutorizacion =>
+                        'Falta la autorización del administrador',
+                      _PasoSalida.registrar => _subtitulo(
+                        listo!.viaje,
+                        siguiente,
+                      ),
+                    },
                   },
                 ),
                 Stack(
@@ -202,11 +278,14 @@ class _InicioView extends StatelessWidget {
                                 context.read<ConductorViajeCubit>().cargar(),
                           ),
                         ),
-                        ConductorViajeSinAsignar() => const _SinViaje(),
+                        ConductorViajeSinAsignar() => _LiberarMonitor(
+                          child: const _SinViaje(),
+                        ),
                         ConductorViajeListo() => _ViajeActivo(
                           estado: listo!,
                           alEditarCosto: (CostoViaje c) =>
                               _editarCosto(context, c),
+                          alAgregarCosto: () => _agregarCosto(context),
                         ),
                       },
                     ),
@@ -286,14 +365,19 @@ class _Cabecera extends StatelessWidget {
   }
 }
 
+/// Lo que hace el botón principal mientras el viaje está por salir.
+enum _PasoSalida { hacerChecklist, esperarAutorizacion, registrar }
+
 class _AccionPrincipal extends StatelessWidget {
   const _AccionPrincipal({
     required this.siguiente,
+    required this.paso,
     required this.procesando,
     required this.onPressed,
   });
 
   final TipoHito? siguiente;
+  final _PasoSalida paso;
   final bool procesando;
   final VoidCallback? onPressed;
 
@@ -321,22 +405,34 @@ class _AccionPrincipal extends StatelessWidget {
         child: AnimatedSwitcher(
           duration: AppMotion.efectiva(context, AppMotion.base),
           child: Row(
-            key: ValueKey<TipoHito?>(t),
+            key: ValueKey<(TipoHito?, _PasoSalida)>((t, paso)),
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              MarcaIcon(
-                t == null ? MarcaIconos.datoReal : HitoTimeline.iconoDe(t),
-                size: 22,
-                color: AppColors.onPrimary,
-              ),
+              if (paso == _PasoSalida.registrar)
+                MarcaIcon(
+                  t == null ? MarcaIconos.datoReal : HitoTimeline.iconoDe(t),
+                  size: 22,
+                  color: AppColors.onPrimary,
+                )
+              else
+                Icon(
+                  paso == _PasoSalida.hacerChecklist
+                      ? LucideIcons.clipboardCheck
+                      : LucideIcons.refreshCw,
+                  size: 22,
+                  color: AppColors.onPrimary,
+                ),
               const SizedBox(width: 10),
               Flexible(
-                child: Text(
-                  t == null
-                      ? 'Todos los pasos registrados'
-                      : 'Registrar ${t.etiqueta.toLowerCase()}',
-                  textAlign: TextAlign.center,
-                ),
+                child: Text(switch (paso) {
+                  _PasoSalida.hacerChecklist => 'Hacer checklist del vehículo',
+                  _PasoSalida.esperarAutorizacion =>
+                    'Revisar si ya me autorizaron',
+                  _PasoSalida.registrar =>
+                    t == null
+                        ? 'Todos los pasos registrados'
+                        : 'Registrar ${t.etiqueta.toLowerCase()}',
+                }, textAlign: TextAlign.center),
               ),
             ],
           ),
@@ -347,10 +443,46 @@ class _AccionPrincipal extends StatelessWidget {
 }
 
 class _ViajeActivo extends StatelessWidget {
-  const _ViajeActivo({required this.estado, required this.alEditarCosto});
+  const _ViajeActivo({
+    required this.estado,
+    required this.alEditarCosto,
+    required this.alAgregarCosto,
+  });
 
   final ConductorViajeListo estado;
   final void Function(CostoViaje costo) alEditarCosto;
+  final VoidCallback alAgregarCosto;
+
+  /// Estado del checklist antes de salir: bloqueado o listo. Sin checklist no
+  /// se muestra nada (el botón ya lo pide).
+  Widget? get _avisoChecklist {
+    final ChecklistViaje? c = estado.checklist;
+    if (c == null ||
+        estado.viaje.estado != EstadoViaje.asignado ||
+        c.estaVencido(DateTime.now())) {
+      return null;
+    }
+    if (c.bloqueaSalida) {
+      return const AppAlert(
+        tono: AppAlertTono.advertencia,
+        titulo: 'Checklist con falla crítica',
+        mensaje:
+            'El administrador ya fue avisado. Podrás comenzar el viaje cuando '
+            'autorice la salida.',
+      );
+    }
+    return AppAlert(
+      tono: c.resultado == ResultadoChecklist.aprobado
+          ? AppAlertTono.exito
+          : AppAlertTono.advertencia,
+      titulo: c.autorizado
+          ? 'Salida autorizada'
+          : 'Checklist ${c.resultado.etiqueta.toLowerCase()}',
+      mensaje: c.autorizado
+          ? 'El administrador autorizó la salida. Ya puedes comenzar.'
+          : 'Listo para comenzar el viaje.',
+    );
+  }
 
   DateTime? get _estimadoDestino {
     final double? min = estado.viaje.tiempoEstimadoMin;
@@ -382,6 +514,10 @@ class _ViajeActivo extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
+        if (_avisoChecklist != null) ...<Widget>[
+          _avisoChecklist!,
+          const SizedBox(height: AppSpacing.x3),
+        ],
         AppCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -503,6 +639,9 @@ class _ViajeActivo extends StatelessWidget {
           costos: estado.costos,
           deshabilitado: estado.procesando,
           alEditar: alEditarCosto,
+          alAgregar: estado.viaje.estado == EstadoViaje.asignado
+              ? null
+              : alAgregarCosto,
         ),
       ],
     );
@@ -587,4 +726,28 @@ class _InicioSkeleton extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Sin viaje activo (terminó o no hay) se detiene el seguimiento y su
+/// servicio en primer plano.
+class _LiberarMonitor extends StatefulWidget {
+  const _LiberarMonitor({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_LiberarMonitor> createState() => _LiberarMonitorState();
+}
+
+class _LiberarMonitorState extends State<_LiberarMonitor> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<MonitorRutaRegistro>().liberar();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

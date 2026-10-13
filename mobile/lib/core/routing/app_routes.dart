@@ -15,6 +15,9 @@ import '../../features/clientes/presentation/pages/clientes_list_page.dart';
 import '../../features/conductores/presentation/pages/conductores_list_page.dart';
 import '../../features/dashboard/presentation/pages/analitica_page.dart';
 import '../../features/notificaciones/presentation/pages/notificaciones_page.dart';
+import '../../features/reportes/presentation/pages/reportes_page.dart';
+import '../../features/satisfaccion/presentation/pages/satisfaccion_page.dart';
+import '../../features/tarifas/presentation/pages/tarifas_page.dart';
 import '../../features/vehiculos/presentation/pages/vehiculos_list_page.dart';
 import '../../features/viajes/presentation/pages/calendario_page.dart';
 import '../../features/viajes/presentation/pages/conductor_historial_page.dart';
@@ -43,12 +46,15 @@ abstract final class AppRoutes {
   // usuario como argumento de ruta, igual que `homeAdmin`/`homeConductor`.
   static const String adminPerfil = '/admin/perfil';
   static const String adminAnalitica = '/admin/analitica';
+  static const String adminSatisfaccion = '/admin/satisfaccion';
   static const String adminCalendario = '/admin/calendario';
   static const String adminSeguimiento = '/admin/seguimiento';
   static const String adminConductores = '/admin/conductores';
   static const String adminClientes = '/admin/clientes';
   static const String adminFlota = '/admin/flota';
   static const String adminNotificaciones = '/admin/notificaciones';
+  static const String adminTarifas = '/admin/tarifas';
+  static const String adminReportes = '/admin/reportes';
 
   // Destinos de la barra de navegación inferior del Conductor. Igual que las
   // secciones de administrador, cada una vuelve a resolver la sesión actual
@@ -77,6 +83,10 @@ abstract final class AppRoutes {
       context,
       (usuario) => AnaliticaPage(usuario: usuario),
     ),
+    adminSatisfaccion: (BuildContext context) => _adminSegunSesion(
+      context,
+      (usuario) => SatisfaccionPage(usuario: usuario),
+    ),
     adminCalendario: (BuildContext context) => _adminSegunSesion(
       context,
       (usuario) => CalendarioPage(usuario: usuario),
@@ -101,6 +111,10 @@ abstract final class AppRoutes {
       context,
       (usuario) => NotificacionesPage(usuario: usuario),
     ),
+    adminTarifas: (BuildContext context) =>
+        _adminSegunSesion(context, (usuario) => TarifasPage(usuario: usuario)),
+    adminReportes: (BuildContext context) =>
+        _adminSegunSesion(context, (usuario) => ReportesPage(usuario: usuario)),
     conductorInicio: (BuildContext context) => _conductorSegunSesion(
       context,
       (usuario) => ConductorInicioPage(usuario: usuario),

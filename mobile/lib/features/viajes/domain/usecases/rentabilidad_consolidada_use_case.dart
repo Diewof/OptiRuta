@@ -9,5 +9,16 @@ class RentabilidadConsolidadaUseCase {
   Future<RentabilidadConsolidada> call({
     required DateTime desde,
     required DateTime hasta,
-  }) => _repositorio.consolidada(desde: desde, hasta: hasta);
+    String? clienteId,
+    String? conductorId,
+    String? vehiculoId,
+    String? ruta,
+  }) => _repositorio.consolidada(
+    desde: desde,
+    hasta: hasta,
+    clienteId: clienteId,
+    conductorId: conductorId,
+    vehiculoId: vehiculoId,
+    ruta: ruta,
+  );
 }

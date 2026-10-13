@@ -11,6 +11,7 @@ abstract final class CostoViajeModel {
       valorEstimado: (fila['valor_estimado'] as num).toDouble(),
       valorReal: (fila['valor_real'] as num?)?.toDouble(),
       fuente: FuenteCosto.desdeCodigo(fila['fuente'] as String),
+      descripcion: fila['descripcion'] as String?,
     );
   }
 }

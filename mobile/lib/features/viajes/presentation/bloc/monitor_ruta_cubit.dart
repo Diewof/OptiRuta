@@ -7,6 +7,7 @@ import '../../domain/entities/coordenada.dart';
 import '../../domain/entities/tipo_alerta_viaje.dart';
 import '../../domain/servicios/servicio_ubicacion.dart';
 import '../../domain/usecases/registrar_alerta_viaje_use_case.dart';
+import '../../domain/usecases/ubicacion_viaje_use_cases.dart';
 import 'monitor_ruta_state.dart';
 
 // Los parametros con nombre no pueden empezar por "_", asi que los campos
@@ -23,12 +24,20 @@ class MonitorRutaCubit extends Cubit<MonitorRutaState> {
     required ServicioUbicacion ubicacion,
     required DetectorRuta detector,
     required RegistrarAlertaViajeUseCase registrarAlerta,
+    required ConsultarConsentimientoUbicacionUseCase consultarConsentimiento,
+    required ResponderConsentimientoUbicacionUseCase responderConsentimiento,
+    required RegistrarUbicacionViajeUseCase registrarUbicacion,
     DateTime Function() ahora = DateTime.now,
     Duration revision = const Duration(minutes: 1),
+    Duration intervaloRegistro = const Duration(minutes: 5),
   }) : _viajeId = viajeId,
        _ubicacion = ubicacion,
        _detector = detector,
        _registrarAlerta = registrarAlerta,
+       _consultarConsentimiento = consultarConsentimiento,
+       _responderConsentimiento = responderConsentimiento,
+       _registrarUbicacion = registrarUbicacion,
+       _intervaloRegistro = intervaloRegistro,
        _ahora = ahora,
        _revision = revision,
        super(const MonitorRutaIniciando());
@@ -37,12 +46,19 @@ class MonitorRutaCubit extends Cubit<MonitorRutaState> {
   final ServicioUbicacion _ubicacion;
   final DetectorRuta _detector;
   final RegistrarAlertaViajeUseCase _registrarAlerta;
+  final ConsultarConsentimientoUbicacionUseCase _consultarConsentimiento;
+  final ResponderConsentimientoUbicacionUseCase _responderConsentimiento;
+  final RegistrarUbicacionViajeUseCase _registrarUbicacion;
+  final Duration _intervaloRegistro;
   final DateTime Function() _ahora;
   final Duration _revision;
 
   StreamSubscription<Coordenada>? _suscripcion;
   Timer? _temporizador;
+  Timer? _temporizadorRegistro;
   Coordenada? _ultima;
+  bool _consentimiento = false;
+  bool _consentimientoConsultado = false;
 
   Future<void> iniciar() async {
     final EstadoPermisoUbicacion permiso = await _ubicacion.solicitarPermiso();
@@ -56,7 +72,21 @@ class MonitorRutaCubit extends Cubit<MonitorRutaState> {
       return;
     }
 
-    emit(const MonitorRutaActivo());
+    try {
+      _consentimiento = await _consultarConsentimiento();
+      _consentimientoConsultado = true;
+    } on Object {
+      // Sin red no se pregunta ni se registra: el mapa sigue funcionando.
+    }
+    if (isClosed) return;
+
+    emit(
+      MonitorRutaActivo(
+        consentimientoPendiente: _consentimientoConsultado && !_consentimiento,
+        registrando: _consentimiento,
+      ),
+    );
+    if (_consentimiento) _programarRegistro();
     _suscripcion = _ubicacion.posiciones().listen(
       _alRecibirPosicion,
       // Un fallo del GPS no debe tumbar la pantalla del viaje.
@@ -73,12 +103,17 @@ class MonitorRutaCubit extends Cubit<MonitorRutaState> {
   void _alRecibirPosicion(Coordenada posicion) {
     _ultima = posicion;
     final MonitorRutaState actual = state;
+    final bool primera = actual is MonitorRutaActivo && actual.posicion == null;
     emit(
       MonitorRutaActivo(
         posicion: posicion,
         alerta: actual is MonitorRutaActivo ? actual.alerta : null,
+        consentimientoPendiente:
+            actual is MonitorRutaActivo && actual.consentimientoPendiente,
+        registrando: _consentimiento,
       ),
     );
+    if (primera && _consentimiento) unawaited(_enviarPunto());
     _evaluar(posicion);
   }
 
@@ -86,7 +121,16 @@ class MonitorRutaCubit extends Cubit<MonitorRutaState> {
     final TipoAlertaViaje? alerta = _detector.evaluar(posicion, _ahora());
     if (alerta == null || isClosed) return;
 
-    emit(MonitorRutaActivo(posicion: posicion, alerta: alerta));
+    final MonitorRutaState actual = state;
+    emit(
+      MonitorRutaActivo(
+        posicion: posicion,
+        alerta: alerta,
+        consentimientoPendiente:
+            actual is MonitorRutaActivo && actual.consentimientoPendiente,
+        registrando: _consentimiento,
+      ),
+    );
     unawaited(_notificarServidor(alerta, posicion));
   }
 
@@ -110,12 +154,63 @@ class MonitorRutaCubit extends Cubit<MonitorRutaState> {
   void descartarAlerta() {
     final MonitorRutaState actual = state;
     if (actual is MonitorRutaActivo && actual.alerta != null) {
-      emit(MonitorRutaActivo(posicion: actual.posicion));
+      emit(
+        MonitorRutaActivo(
+          posicion: actual.posicion,
+          consentimientoPendiente: actual.consentimientoPendiente,
+          registrando: actual.registrando,
+        ),
+      );
+    }
+  }
+
+  /// El conductor acepta o rechaza el registro de su ubicación (RF-23).
+  Future<void> responderConsentimiento({required bool acepta}) async {
+    final MonitorRutaState actual = state;
+    if (actual is! MonitorRutaActivo) return;
+    try {
+      _consentimiento = await _responderConsentimiento(acepta: acepta);
+    } on Object {
+      return; // Se mantiene la pregunta para reintentar.
+    }
+    if (isClosed) return;
+    emit(
+      MonitorRutaActivo(
+        posicion: actual.posicion,
+        alerta: actual.alerta,
+        registrando: _consentimiento,
+      ),
+    );
+    if (_consentimiento) {
+      _programarRegistro();
+      unawaited(_enviarPunto());
+    } else {
+      _temporizadorRegistro?.cancel();
+    }
+  }
+
+  void _programarRegistro() {
+    _temporizadorRegistro?.cancel();
+    _temporizadorRegistro = Timer.periodic(
+      _intervaloRegistro,
+      (_) => unawaited(_enviarPunto()),
+    );
+  }
+
+  // Mejor esfuerzo: un punto perdido no afecta al viaje.
+  Future<void> _enviarPunto() async {
+    final Coordenada? ultima = _ultima;
+    if (ultima == null || !_consentimiento || isClosed) return;
+    try {
+      await _registrarUbicacion(viajeId: _viajeId, posicion: ultima);
+    } on Object {
+      // Intencional: ver comentario arriba.
     }
   }
 
   @override
   Future<void> close() async {
+    _temporizadorRegistro?.cancel();
     _temporizador?.cancel();
     await _suscripcion?.cancel();
     return super.close();

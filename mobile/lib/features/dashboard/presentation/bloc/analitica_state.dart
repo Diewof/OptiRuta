@@ -1,5 +1,8 @@
 import 'package:equatable/equatable.dart';
 
+import '../../../reportes/domain/entities/reporte.dart';
+import '../../domain/entities/metricas.dart';
+import '../../../notificaciones/domain/entities/notificacion.dart';
 import '../../../viajes/domain/entities/rentabilidad_consolidada.dart';
 import '../../../viajes/domain/entities/viaje_resumen.dart';
 
@@ -30,6 +33,11 @@ class AnaliticaListo extends AnaliticaState {
     required this.vehiculosEnRuta,
     required this.vehiculosDisponibles,
     required this.totalVehiculosActivos,
+    required this.metricas,
+    required this.filtro,
+    this.opciones = const OpcionesReporte(),
+    this.rendimiento = const <DimensionMetrica, List<MetricaDimension>>{},
+    this.alertas = const <Notificacion>[],
     this.viajesActivos = const <ViajeResumen>[],
   });
 
@@ -43,6 +51,20 @@ class AnaliticaListo extends AnaliticaState {
   /// Viajes ASIGNADO/EN_CURSO (los mismos con los que se calcula la flota).
   final List<ViajeResumen> viajesActivos;
 
+  /// Filtros activos (fechas + cliente/conductor/vehículo/ruta). El mes que
+  /// se muestra en el selector es el de `filtro.desde`.
+  final FiltroReporte filtro;
+  final OpcionesReporte opciones;
+
+  /// Costo por km, cumplimiento y utilización del período (RF-24/25).
+  final MetricasPeriodo metricas;
+
+  /// Rendimiento del período por ruta, cliente y conductor (RF-25).
+  final Map<DimensionMetrica, List<MetricaDimension>> rendimiento;
+
+  /// Alertas sin leer: vencimientos, retrasos, paradas y desvíos (RF-26).
+  final List<Notificacion> alertas;
+
   @override
   List<Object?> get props => <Object?>[
     mes,
@@ -51,5 +73,10 @@ class AnaliticaListo extends AnaliticaState {
     vehiculosDisponibles,
     totalVehiculosActivos,
     viajesActivos,
+    metricas,
+    filtro,
+    opciones,
+    rendimiento,
+    alertas,
   ];
 }

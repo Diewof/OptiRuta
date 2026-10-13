@@ -146,12 +146,18 @@ class _Contenido extends StatelessWidget {
                 for (final ViajeResumen v in viajesDelDia) ...<Widget>[
                   ViajeResumenCard(
                     viaje: v,
-                    onTap: () => Navigator.of(context).push<void>(
-                      MaterialPageRoute<void>(
-                        builder: (_) =>
-                            ViajeDetallePage(viaje: v, puedeCerrar: true),
-                      ),
-                    ),
+                    onTap: () {
+                      final CalendarioCubit cubit = context
+                          .read<CalendarioCubit>();
+                      Navigator.of(context)
+                          .push<void>(
+                            MaterialPageRoute<void>(
+                              builder: (_) =>
+                                  ViajeDetallePage(viaje: v, puedeCerrar: true),
+                            ),
+                          )
+                          .then((_) => cubit.recargar());
+                    },
                   ),
                   const SizedBox(height: AppSpacing.x2),
                 ],

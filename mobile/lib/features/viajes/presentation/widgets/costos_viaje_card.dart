@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_motion.dart';
@@ -21,6 +22,7 @@ class CostosViajeCard extends StatelessWidget {
   const CostosViajeCard({
     required this.costos,
     required this.alEditar,
+    this.alAgregar,
     this.deshabilitado = false,
     super.key,
   });
@@ -30,6 +32,10 @@ class CostosViajeCard extends StatelessWidget {
 
   /// Abre la hoja para confirmar el valor real de [costo].
   final void Function(CostoViaje costo) alEditar;
+
+  /// Abre la hoja para anotar un costo adicional libre (RF-14). Sin él no
+  /// se muestra el botón.
+  final VoidCallback? alAgregar;
 
   static MarcaIconos _iconoDe(CategoriaCosto c) => switch (c) {
     CategoriaCosto.acpm => MarcaIconos.acpm,
@@ -83,6 +89,17 @@ class CostosViajeCard extends StatelessWidget {
               onEditar: deshabilitado ? null : () => alEditar(editables[i]),
             ),
           if (peajes.isNotEmpty) _FilaPeajes(peajes: peajes),
+          if (alAgregar != null) ...<Widget>[
+            const SizedBox(height: AppSpacing.x2),
+            SizedBox(
+              height: 48,
+              child: OutlinedButton.icon(
+                onPressed: deshabilitado ? null : alAgregar,
+                icon: const Icon(LucideIcons.plus, size: 18),
+                label: const Text('Agregar otro costo'),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -124,7 +141,7 @@ class _FilaCosto extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(
-                  costo.categoria.etiqueta,
+                  costo.etiqueta,
                   style: AppTypography.body.copyWith(
                     fontWeight: FontWeight.w600,
                     color: AppColors.textPrimary,

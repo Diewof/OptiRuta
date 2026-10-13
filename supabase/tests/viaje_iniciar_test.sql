@@ -37,6 +37,21 @@ values
    '66666666-0000-0000-0000-0000000000c1', '77777777-0000-0000-0000-0000000000c1',
    'Cali', 'Bogotá', null, null, 'ASIGNADO', 4000000);
 
+-- Precondiciones de salida (documentos vigentes y checklist aprobado): este
+-- archivo prueba solo el radio; las demas reglas estan en flota_salida_test.sql.
+insert into public.documento_vehiculo (vehiculo_id, tipo, fecha_vencimiento)
+select v.id, t.tipo, date '2099-01-01'
+  from public.vehiculo v
+ cross join (values ('SOAT'), ('TECNOMECANICA')) as t (tipo)
+ where v.id in ('55555555-0000-0000-0000-0000000000c1', '55555555-0000-0000-0000-0000000000c2');
+
+insert into public.checklist_viaje (viaje_id, vehiculo_id, conductor_id, resultado)
+values
+  ('88888888-0000-0000-0000-0000000000c1', '55555555-0000-0000-0000-0000000000c1',
+   '66666666-0000-0000-0000-0000000000c1', 'APROBADO'),
+  ('88888888-0000-0000-0000-0000000000c2', '55555555-0000-0000-0000-0000000000c2',
+   '66666666-0000-0000-0000-0000000000c1', 'APROBADO');
+
 set local role authenticated;
 select set_config('request.jwt.claims', json_build_object(
   'sub', 'c0000000-0000-0000-0000-0000000000c1', 'role', 'authenticated',

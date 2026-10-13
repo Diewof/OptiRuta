@@ -6,7 +6,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(15);
+select plan(16);
 
 -- ---------------------------------------------------------------------------
 -- Estructura
@@ -96,6 +96,14 @@ update public.viaje set estado = 'FINALIZADO' where id = '44444444-0000-0000-000
 
 insert into public.peaje_capturado (viaje_id, placa, monto, fecha_hora, correo_origen_id)
 values ('44444444-0000-0000-0000-000000000001', 'NTF001', 12000, now(), 'correo-notif-test-1');
+
+-- La alerta de viaje completado nace al finalizar (trigger), sin esperar al cron.
+select is(
+  (select count(*)::int from public.notificacion
+    where tipo = 'VIAJE_COMPLETADO' and viaje_id = '44444444-0000-0000-0000-000000000002'),
+  1,
+  'la alerta de viaje completado se crea al pasar a FINALIZADO, antes de notificacion_generar'
+);
 
 -- ---------------------------------------------------------------------------
 -- notificacion_generar(): crea las 4 alertas esperadas

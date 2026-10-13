@@ -16,6 +16,7 @@ class CostoViaje extends Equatable {
     required this.valorEstimado,
     required this.fuente,
     this.valorReal,
+    this.descripcion,
   });
 
   final String id;
@@ -25,6 +26,12 @@ class CostoViaje extends Equatable {
   final double? valorReal;
   final FuenteCosto fuente;
 
+  /// Descripción libre de los costos adicionales (RF-14); nula en las
+  /// categorías fijas.
+  final String? descripcion;
+
+  String get etiqueta => descripcion ?? categoria.etiqueta;
+
   @override
   List<Object?> get props => <Object?>[
     id,
@@ -33,5 +40,6 @@ class CostoViaje extends Equatable {
     valorEstimado,
     valorReal,
     fuente,
+    descripcion,
   ];
 }

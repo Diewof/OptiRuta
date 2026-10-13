@@ -1,12 +1,16 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/error/catalogo_failure.dart';
+import '../../../checklist/domain/entities/checklist.dart';
+import '../../../checklist/domain/usecases/checklist_use_cases.dart';
 import '../../domain/entities/costo_viaje.dart';
 import '../../domain/entities/coordenada.dart';
 import '../../domain/entities/hito.dart';
 import '../../domain/entities/tipo_hito.dart';
+import '../../domain/entities/estado_viaje.dart';
 import '../../domain/entities/viaje_resumen.dart';
 import '../../domain/usecases/actualizar_valor_real_costo_use_case.dart';
+import '../../domain/usecases/agregar_costo_viaje_use_case.dart';
 import '../../domain/servicios/servicio_ubicacion.dart';
 import '../../domain/usecases/iniciar_viaje_use_case.dart';
 import '../../domain/usecases/listar_costos_viaje_use_case.dart';
@@ -33,6 +37,8 @@ class ConductorViajeCubit extends Cubit<ConductorViajeState> {
     required IniciarViajeUseCase iniciarViaje,
     required ServicioUbicacion ubicacion,
     required ActualizarValorRealCostoUseCase actualizarValorReal,
+    required AgregarCostoViajeUseCase agregarCosto,
+    required ObtenerChecklistViajeUseCase obtenerChecklist,
   }) : _listarActivos = listarActivos,
        _listarHitos = listarHitos,
        _listarCostos = listarCostos,
@@ -40,6 +46,8 @@ class ConductorViajeCubit extends Cubit<ConductorViajeState> {
        _iniciarViaje = iniciarViaje,
        _ubicacion = ubicacion,
        _actualizarValorReal = actualizarValorReal,
+       _agregarCosto = agregarCosto,
+       _obtenerChecklist = obtenerChecklist,
        super(const ConductorViajeCargando()) {
     cargar();
   }
@@ -51,6 +59,8 @@ class ConductorViajeCubit extends Cubit<ConductorViajeState> {
   final IniciarViajeUseCase _iniciarViaje;
   final ServicioUbicacion _ubicacion;
   final ActualizarValorRealCostoUseCase _actualizarValorReal;
+  final AgregarCostoViajeUseCase _agregarCosto;
+  final ObtenerChecklistViajeUseCase _obtenerChecklist;
 
   /// Con [silencioso] no pasa por «Cargando»: la pantalla conserva lo que ya
   /// muestra y solo cambia lo nuevo (así se pueden animar los cambios).
@@ -65,9 +75,27 @@ class ConductorViajeCubit extends Cubit<ConductorViajeState> {
       final ViajeResumen viaje = viajes.first;
       final List<Hito> hitos = await _listarHitos(viaje.id);
       final List<CostoViaje> costos = await _listarCostos(viaje.id);
-      emit(ConductorViajeListo(viaje: viaje, hitos: hitos, costos: costos));
+      emit(
+        ConductorViajeListo(
+          viaje: viaje,
+          hitos: hitos,
+          costos: costos,
+          checklist: await _checklistDe(viaje),
+        ),
+      );
     } on CatalogoFailure catch (falla) {
       emit(ConductorViajeError(falla.mensaje));
+    }
+  }
+
+  /// El checklist solo importa antes de salir. Si no se puede leer se trata
+  /// como «sin checklist»: `viaje_iniciar` es quien manda y avisará.
+  Future<ChecklistViaje?> _checklistDe(ViajeResumen viaje) async {
+    if (viaje.estado != EstadoViaje.asignado) return null;
+    try {
+      return await _obtenerChecklist(viaje.id);
+    } on CatalogoFailure {
+      return null;
     }
   }
 
@@ -132,6 +160,28 @@ class ConductorViajeCubit extends Cubit<ConductorViajeState> {
       await _actualizarValorReal(costoId: costoId, valorReal: valorReal);
       await cargar(silencioso: true);
     } on CatalogoFailure {
+      emit(actual.copiarCon(procesando: false));
+      rethrow;
+    }
+  }
+
+  /// Anota un costo adicional libre del viaje activo (RF-14), siempre como
+  /// valor real. Relanza la falla para que la hoja la muestre.
+  Future<void> agregarCostoLibre({
+    required String descripcion,
+    required double valor,
+  }) async {
+    final ConductorViajeState actual = state;
+    if (actual is! ConductorViajeListo || actual.procesando) return;
+    emit(actual.copiarCon(procesando: true));
+    try {
+      await _agregarCosto(
+        viajeId: actual.viaje.id,
+        descripcion: descripcion,
+        valorReal: valor,
+      );
+      await cargar(silencioso: true);
+    } on Object {
       emit(actual.copiarCon(procesando: false));
       rethrow;
     }

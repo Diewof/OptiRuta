@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_radius.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/admin_scaffold.dart';
@@ -20,6 +21,7 @@ import '../../domain/usecases/inhabilitar_vehiculo_use_case.dart';
 import '../../domain/usecases/listar_vehiculos_use_case.dart';
 import '../bloc/vehiculo_list_cubit.dart';
 import '../bloc/vehiculo_list_state.dart';
+import 'hoja_vida_page.dart';
 import 'vehiculo_form_page.dart';
 
 /// Listado paginado de vehiculos (solo ADMINISTRADOR: la ruta que llega aqui
@@ -213,6 +215,12 @@ class _VehiculoCard extends StatelessWidget {
     }
   }
 
+  Future<void> _verHojaVida(BuildContext context) {
+    return Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(builder: (_) => HojaVidaPage(vehiculo: vehiculo)),
+    );
+  }
+
   Future<void> _confirmarInhabilitar(BuildContext context) async {
     final bool? confirmar = await showDialog<bool>(
       context: context,
@@ -252,63 +260,72 @@ class _VehiculoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      padding: const EdgeInsets.all(AppSpacing.x3),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: <Widget>[
-          VehiculoThumb(tipo: vehiculo.tipo, ancho: 80),
-          const SizedBox(width: AppSpacing.x3),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Wrap(
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: AppSpacing.x2,
-                  runSpacing: AppSpacing.x1,
-                  children: <Widget>[
-                    Text(vehiculo.placa, style: AppTypography.subtitle),
-                    StatusBadge.activo(vehiculo.activo),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.x1),
-                Text(
-                  vehiculo.tipo.etiqueta,
-                  style: AppTypography.body.copyWith(
-                    color: AppColors.textSecondary,
+    return InkWell(
+      borderRadius: AppRadius.lgAll,
+      onTap: () => _verHojaVida(context),
+      child: AppCard(
+        padding: const EdgeInsets.all(AppSpacing.x3),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: <Widget>[
+            VehiculoThumb(tipo: vehiculo.tipo, ancho: 80),
+            const SizedBox(width: AppSpacing.x3),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: AppSpacing.x2,
+                    runSpacing: AppSpacing.x1,
+                    children: <Widget>[
+                      Text(vehiculo.placa, style: AppTypography.subtitle),
+                      StatusBadge.activo(vehiculo.activo),
+                    ],
                   ),
-                ),
-                Text(
-                  '${vehiculo.capacidadCarga.toStringAsFixed(0)} ton · '
-                  '${vehiculo.rendimientoKmGalon.toStringAsFixed(1)} km/gal',
-                  style: AppTypography.caption.copyWith(
-                    fontFeatures: AppTypography.tabular,
+                  const SizedBox(height: AppSpacing.x1),
+                  Text(
+                    vehiculo.tipo.etiqueta,
+                    style: AppTypography.body.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
                   ),
+                  Text(
+                    '${vehiculo.capacidadCarga.toStringAsFixed(0)} ton · '
+                    '${vehiculo.rendimientoKmGalon.toStringAsFixed(1)} km/gal',
+                    style: AppTypography.caption.copyWith(
+                      fontFeatures: AppTypography.tabular,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            PopupMenuButton<String>(
+              tooltip: 'Más acciones',
+              icon: const Icon(LucideIcons.moreVertical),
+              onSelected: (String accion) {
+                if (accion == 'hoja_vida') _verHojaVida(context);
+                if (accion == 'editar') _editar(context);
+                if (accion == 'inhabilitar') _confirmarInhabilitar(context);
+              },
+              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                const PopupMenuItem<String>(
+                  value: 'hoja_vida',
+                  child: Text('Hoja de vida'),
                 ),
+                const PopupMenuItem<String>(
+                  value: 'editar',
+                  child: Text('Editar'),
+                ),
+                if (vehiculo.activo)
+                  const PopupMenuItem<String>(
+                    value: 'inhabilitar',
+                    child: Text('Inhabilitar'),
+                  ),
               ],
             ),
-          ),
-          PopupMenuButton<String>(
-            tooltip: 'Más acciones',
-            icon: const Icon(LucideIcons.moreVertical),
-            onSelected: (String accion) {
-              if (accion == 'editar') _editar(context);
-              if (accion == 'inhabilitar') _confirmarInhabilitar(context);
-            },
-            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-              const PopupMenuItem<String>(
-                value: 'editar',
-                child: Text('Editar'),
-              ),
-              if (vehiculo.activo)
-                const PopupMenuItem<String>(
-                  value: 'inhabilitar',
-                  child: Text('Inhabilitar'),
-                ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

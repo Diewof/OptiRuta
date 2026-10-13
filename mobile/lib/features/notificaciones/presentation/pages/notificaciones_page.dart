@@ -20,6 +20,7 @@ import '../../../viajes/domain/usecases/obtener_viaje_resumen_use_case.dart';
 import '../../../viajes/presentation/pages/viaje_detalle_page.dart';
 import '../../domain/entities/notificacion.dart';
 import '../../domain/entities/tipo_notificacion.dart';
+import '../widgets/tipo_notificacion_visual.dart';
 import '../../domain/repositories/notificacion_repository.dart';
 import '../../domain/usecases/listar_notificaciones_use_case.dart';
 import '../../domain/usecases/marcar_notificacion_leida_use_case.dart';
@@ -220,27 +221,13 @@ class _NotificacionCard extends StatelessWidget {
 
   final Notificacion notificacion;
 
-  (IconData, Color) get _iconoYColor => switch (notificacion.tipo) {
-    TipoNotificacion.viajeCompletado => (
-      LucideIcons.circleCheck,
-      AppColors.success,
-    ),
-    TipoNotificacion.retraso => (LucideIcons.clock, AppColors.warning),
-    TipoNotificacion.documentoPorVencer => (
-      LucideIcons.fileText,
-      AppColors.warning,
-    ),
-    TipoNotificacion.peajeRegistrado => (LucideIcons.info, AppColors.navy),
-    TipoNotificacion.novedad => (LucideIcons.info, AppColors.navy),
-    TipoNotificacion.paradaProlongada => (
-      LucideIcons.circlePause,
-      AppColors.warning,
-    ),
-    TipoNotificacion.desvioRuta => (LucideIcons.route, AppColors.warning),
-  };
+  (IconData, Color) get _iconoYColor =>
+      (notificacion.tipo.icono, notificacion.tipo.color);
 
   bool get _puedeAbrirViaje =>
-      notificacion.tipo.esAlertaDeRuta && notificacion.viajeId != null;
+      (notificacion.tipo.esAlertaDeRuta ||
+          notificacion.tipo == TipoNotificacion.checklistFalla) &&
+      notificacion.viajeId != null;
 
   Future<void> _alTocar(BuildContext context) async {
     final NotificacionListCubit cubit = context.read<NotificacionListCubit>();

@@ -20,6 +20,38 @@ class CostoViajeRepositoryImpl implements CostoViajeRepository {
   }
 
   @override
+  Future<CostoViaje> agregarOtro({
+    required String viajeId,
+    required String descripcion,
+    double valorEstimado = 0,
+    double? valorReal,
+  }) {
+    return ejecutarCatalogo(() async {
+      final Map<String, dynamic> fila = await _remote.agregarOtro(
+        viajeId: viajeId,
+        descripcion: descripcion,
+        valorEstimado: valorEstimado,
+        valorReal: valorReal,
+      );
+      return CostoViajeModel.aEntidad(fila);
+    });
+  }
+
+  @override
+  Future<CostoViaje> actualizarEstimado({
+    required String costoId,
+    required double valorEstimado,
+  }) {
+    return ejecutarCatalogo(() async {
+      final Map<String, dynamic> fila = await _remote.actualizarEstimado(
+        costoId: costoId,
+        valorEstimado: valorEstimado,
+      );
+      return CostoViajeModel.aEntidad(fila);
+    });
+  }
+
+  @override
   Future<CostoViaje> actualizarValorReal({
     required String costoId,
     required double valorReal,

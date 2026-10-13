@@ -381,6 +381,11 @@ allow_dynamic_registration = false
 # (PRECIO_ACPM_SCRAPER_SECRET), no el JWT de Supabase Auth.
 verify_jwt = false
 
+[functions.encuestas]
+# Puente con el Google Form de satisfaccion: la protege una clave de servicio en
+# cabecera (ENCUESTAS_SECRET), no el JWT de Supabase Auth.
+verify_jwt = false
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.

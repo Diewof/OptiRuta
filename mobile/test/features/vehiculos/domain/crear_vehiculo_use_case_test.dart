@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:optiruta/features/vehiculos/domain/entities/ficha_tecnica.dart';
 import 'package:optiruta/features/vehiculos/domain/entities/tipo_vehiculo.dart';
 import 'package:optiruta/features/vehiculos/domain/entities/vehiculo.dart';
 import 'package:optiruta/features/vehiculos/domain/repositories/vehiculo_repository.dart';
@@ -22,6 +23,7 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(TipoVehiculo.dobleTroque);
+    registerFallbackValue(FichaTecnica.vacia);
   });
 
   setUp(() {
@@ -33,6 +35,7 @@ void main() {
         tipo: any(named: 'tipo'),
         capacidadCarga: any(named: 'capacidadCarga'),
         rendimientoKmGalon: any(named: 'rendimientoKmGalon'),
+        ficha: any(named: 'ficha'),
       ),
     ).thenAnswer((_) async => vehiculoCreado);
   });
@@ -51,6 +54,7 @@ void main() {
         tipo: TipoVehiculo.dobleTroque,
         capacidadCarga: 17,
         rendimientoKmGalon: 9,
+        ficha: FichaTecnica.vacia,
       ),
     ).called(1);
   });

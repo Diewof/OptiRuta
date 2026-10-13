@@ -11,7 +11,7 @@ abstract final class NotificacionModel {
       titulo: fila['titulo'] as String,
       mensaje: fila['mensaje'] as String,
       leida: fila['leida'] as bool,
-      fechaCreacion: DateTime.parse(fila['fecha_creacion'] as String),
+      fechaCreacion: DateTime.parse(fila['fecha_creacion'] as String).toLocal(),
       viajeId: fila['viaje_id'] as String?,
       vehiculoId: fila['vehiculo_id'] as String?,
       ubicacion: fila['lat'] == null || fila['lng'] == null

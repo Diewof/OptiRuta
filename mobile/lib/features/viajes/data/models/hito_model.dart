@@ -7,7 +7,7 @@ abstract final class HitoModel {
       id: fila['id'] as String,
       viajeId: fila['viaje_id'] as String,
       tipo: TipoHito.desdeCodigo(fila['tipo'] as String),
-      fechaHora: DateTime.parse(fila['fecha_hora'] as String),
+      fechaHora: DateTime.parse(fila['fecha_hora'] as String).toLocal(),
     );
   }
 }

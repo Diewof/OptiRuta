@@ -20,14 +20,22 @@ class RentabilidadRemoteDataSource {
   Future<Map<String, dynamic>> consolidada({
     required DateTime desde,
     required DateTime hasta,
+    String? clienteId,
+    String? conductorId,
+    String? vehiculoId,
+    String? ruta,
   }) {
     String soloFecha(DateTime f) => f.toIso8601String().split('T').first;
     return _client
         .rpc(
-          'rentabilidad_consolidada',
+          'rentabilidad_consolidada_v3',
           params: <String, dynamic>{
             'p_desde': soloFecha(desde),
             'p_hasta': soloFecha(hasta),
+            'p_cliente_id': clienteId,
+            'p_conductor_id': conductorId,
+            'p_vehiculo_id': vehiculoId,
+            'p_ruta': ruta,
           },
         )
         .single();

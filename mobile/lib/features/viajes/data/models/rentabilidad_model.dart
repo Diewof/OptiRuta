@@ -1,3 +1,4 @@
+import '../../domain/entities/categoria_costo.dart';
 import '../../domain/entities/rentabilidad_consolidada.dart';
 import '../../domain/entities/rentabilidad_marginal.dart';
 
@@ -23,6 +24,23 @@ abstract final class RentabilidadModel {
       rentabilidadConsolidada: (fila['rentabilidad_consolidada'] as num)
           .toDouble(),
       viajesIncluidos: fila['viajes_incluidos'] as int,
+      costosPorCategoria: _costosPorCategoria(fila['costos_por_categoria']),
     );
+  }
+
+  /// `{"ACPM": 250000, ...}` → mapa por categoría; una categoría desconocida
+  /// se ignora para que un tipo nuevo no tumbe el Resumen.
+  static Map<CategoriaCosto, double> _costosPorCategoria(Object? crudo) {
+    if (crudo is! Map) return const <CategoriaCosto, double>{};
+    final Map<CategoriaCosto, double> salida = <CategoriaCosto, double>{};
+    crudo.forEach((Object? clave, Object? valor) {
+      try {
+        salida[CategoriaCosto.desdeCodigo(clave as String)] = (valor as num)
+            .toDouble();
+      } on ArgumentError {
+        // Categoría que esta versión de la app no conoce.
+      }
+    });
+    return salida;
   }
 }

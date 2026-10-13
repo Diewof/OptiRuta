@@ -34,6 +34,7 @@ class NotificacionListCubit extends Cubit<NotificacionListState> {
     emit(const NotificacionListCargando());
     try {
       final pagina = await _listar(pagina: 0, tamano: tamanoPagina);
+      if (isClosed) return;
       emit(
         NotificacionListListo(
           notificaciones: pagina.notificaciones,
@@ -42,7 +43,7 @@ class NotificacionListCubit extends Cubit<NotificacionListState> {
         ),
       );
     } on CatalogoFailure catch (falla) {
-      emit(NotificacionListError(falla.mensaje));
+      if (!isClosed) emit(NotificacionListError(falla.mensaje));
     }
   }
 

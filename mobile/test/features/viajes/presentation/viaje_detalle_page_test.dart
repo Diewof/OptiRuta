@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:optiruta/features/checklist/domain/repositories/checklist_repository.dart';
+import 'package:optiruta/features/satisfaccion/domain/repositories/satisfaccion_repository.dart';
 import 'package:optiruta/core/error/catalogo_failure.dart';
 import 'package:optiruta/core/theme/app_theme.dart';
 import 'package:optiruta/features/vehiculos/domain/entities/tipo_vehiculo.dart';
@@ -22,6 +24,8 @@ import 'package:optiruta/features/viajes/domain/repositories/rentabilidad_reposi
 import 'package:optiruta/features/viajes/domain/repositories/viaje_repository.dart';
 import 'package:optiruta/features/viajes/presentation/pages/viaje_detalle_page.dart';
 
+import '../../checklist/sin_checklist_repository.dart';
+
 class _MockViaje extends Mock implements ViajeRepository {}
 
 class _MockHito extends Mock implements HitoRepository {}
@@ -31,6 +35,8 @@ class _MockCosto extends Mock implements CostoViajeRepository {}
 class _MockRenta extends Mock implements RentabilidadRepository {}
 
 class _MockAjuste extends Mock implements AjusteViajeRepository {}
+
+class _MockSatisfaccion extends Mock implements SatisfaccionRepository {}
 
 ViajeResumen _viaje(EstadoViaje e) => ViajeResumen(
   id: 'v-1',
@@ -91,6 +97,7 @@ void main() {
   late _MockCosto costoRepo;
   late _MockRenta rentaRepo;
   late _MockAjuste ajusteRepo;
+  late _MockSatisfaccion satisfaccionRepo;
   late List<AjusteViaje> ajustes;
 
   setUp(() {
@@ -99,6 +106,9 @@ void main() {
     costoRepo = _MockCosto();
     rentaRepo = _MockRenta();
     ajusteRepo = _MockAjuste();
+    satisfaccionRepo = _MockSatisfaccion();
+    when(() => satisfaccionRepo.encuestaDeViaje(any()))
+        .thenAnswer((_) async => null);
     ajustes = <AjusteViaje>[];
 
     when(() => hitoRepo.listarPorViaje('v-1')).thenAnswer(
@@ -142,6 +152,12 @@ void main() {
           RepositoryProvider<CostoViajeRepository>.value(value: costoRepo),
           RepositoryProvider<RentabilidadRepository>.value(value: rentaRepo),
           RepositoryProvider<AjusteViajeRepository>.value(value: ajusteRepo),
+          RepositoryProvider<SatisfaccionRepository>.value(
+            value: satisfaccionRepo,
+          ),
+          RepositoryProvider<ChecklistRepository>.value(
+            value: const SinChecklistRepository(),
+          ),
         ],
         child: MaterialApp(
           theme: AppTheme.light,

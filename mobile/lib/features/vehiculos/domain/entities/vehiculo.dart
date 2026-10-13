@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 
+import 'ficha_tecnica.dart';
 import 'tipo_vehiculo.dart';
 
 /// Vehiculo de la flota. Sin borrado fisico: la baja se hace con
@@ -12,6 +13,7 @@ class Vehiculo extends Equatable {
     required this.capacidadCarga,
     required this.rendimientoKmGalon,
     required this.activo,
+    this.ficha = FichaTecnica.vacia,
   });
 
   final String id;
@@ -22,6 +24,7 @@ class Vehiculo extends Equatable {
   final double capacidadCarga;
   final double rendimientoKmGalon;
   final bool activo;
+  final FichaTecnica ficha;
 
   @override
   List<Object?> get props => <Object?>[
@@ -31,5 +34,6 @@ class Vehiculo extends Equatable {
     capacidadCarga,
     rendimientoKmGalon,
     activo,
+    ficha,
   ];
 }

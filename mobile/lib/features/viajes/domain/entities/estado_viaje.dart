@@ -5,7 +5,8 @@ enum EstadoViaje {
   asignado('ASIGNADO', 'Asignado'),
   enCurso('EN_CURSO', 'En curso'),
   finalizado('FINALIZADO', 'Finalizado'),
-  cerrado('CERRADO', 'Cerrado');
+  cerrado('CERRADO', 'Cerrado'),
+  cancelado('CANCELADO', 'Cancelado');
 
   const EstadoViaje(this.codigo, this.etiqueta);
 
@@ -19,6 +20,7 @@ enum EstadoViaje {
       'EN_CURSO' => EstadoViaje.enCurso,
       'FINALIZADO' => EstadoViaje.finalizado,
       'CERRADO' => EstadoViaje.cerrado,
+      'CANCELADO' => EstadoViaje.cancelado,
       _ => throw ArgumentError.value(
         valor,
         'valor',

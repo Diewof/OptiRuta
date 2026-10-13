@@ -51,6 +51,12 @@ class EstadoViajeBadge extends StatelessWidget {
           icono: MarcaIconos.lock,
           borde: false,
         ),
+        EstadoViaje.cancelado => (
+          fondo: AppColors.errorTint,
+          texto: AppColors.textPrimary,
+          icono: MarcaIconos.alerta,
+          borde: false,
+        ),
       };
 
   @override

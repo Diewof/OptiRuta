@@ -2,17 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/app_alert.dart';
 import '../../../../core/widgets/figura_ruta.dart';
-import '../../domain/detector_ruta.dart';
 import '../../domain/entities/coordenada.dart';
 import '../../domain/entities/tipo_alerta_viaje.dart';
 import '../../domain/entities/viaje_resumen.dart';
-import '../../domain/repositories/viaje_repository.dart';
-import '../../domain/ruta_geometria.dart';
-import '../../domain/servicios/servicio_ubicacion.dart';
-import '../../domain/usecases/registrar_alerta_viaje_use_case.dart';
 import '../bloc/monitor_ruta_cubit.dart';
+import '../bloc/monitor_ruta_registro.dart';
 import '../bloc/monitor_ruta_state.dart';
 import 'mapa_ruta.dart';
 
@@ -51,19 +48,10 @@ class MapaRutaViaje extends StatelessWidget {
     );
     if (!monitorear) return estatico;
 
-    return BlocProvider<MonitorRutaCubit>(
-      // La clave evita reutilizar el cubit si la pantalla pasa a otro viaje.
-      key: ValueKey<String>(viaje.id),
-      create: (BuildContext context) => MonitorRutaCubit(
-        viajeId: viaje.id,
-        ubicacion: context.read<ServicioUbicacion>(),
-        detector: DetectorRuta(
-          ruta: decodificarPolilinea(viaje.rutaPolilinea ?? ''),
-        ),
-        registrarAlerta: RegistrarAlertaViajeUseCase(
-          context.read<ViajeRepository>(),
-        ),
-      )..iniciar(),
+    // El cubit vive en el registro (no en este widget) para seguir activo si
+    // el conductor cambia de pestaña o bloquea la pantalla.
+    return BlocProvider<MonitorRutaCubit>.value(
+      value: context.read<MonitorRutaRegistro>().obtener(viaje),
       child: _MapaEnVivo(viaje: viaje, altura: altura),
     );
   }
@@ -105,6 +93,16 @@ class _MapaEnVivo extends StatelessWidget {
               posicion: activo?.posicion,
               altura: altura,
             ),
+            if (activo != null && activo.consentimientoPendiente)
+              const _PedirConsentimiento(),
+            if (activo != null && activo.registrando) ...<Widget>[
+              const SizedBox(height: AppSpacing.x2),
+              const Text(
+                'Tu ubicación se comparte con la empresa cada pocos minutos '
+                'mientras el viaje esté en curso y la app abierta.',
+                style: AppTypography.caption,
+              ),
+            ],
             if (state is MonitorRutaSinPermiso) ...<Widget>[
               const SizedBox(height: AppSpacing.x2),
               AppAlert(
@@ -119,6 +117,51 @@ class _MapaEnVivo extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+/// Consentimiento informado para registrar la ubicación (RF-23).
+class _PedirConsentimiento extends StatelessWidget {
+  const _PedirConsentimiento();
+
+  @override
+  Widget build(BuildContext context) {
+    final MonitorRutaCubit cubit = context.read<MonitorRutaCubit>();
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.x2),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          const AppAlert(
+            tono: AppAlertTono.advertencia,
+            titulo: '¿Compartir tu ubicación con la empresa?',
+            mensaje:
+                'Mientras un viaje esté en curso y la app abierta, se guarda '
+                'tu posición cada pocos minutos para que la empresa siga el '
+                'viaje. Fuera de un viaje no se guarda nada. Puedes cambiarlo '
+                'cuando quieras.',
+          ),
+          const SizedBox(height: AppSpacing.x2),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => cubit.responderConsentimiento(acepta: false),
+                  child: const Text('Ahora no'),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.x2),
+              Expanded(
+                child: FilledButton(
+                  onPressed: () => cubit.responderConsentimiento(acepta: true),
+                  child: const Text('Acepto'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

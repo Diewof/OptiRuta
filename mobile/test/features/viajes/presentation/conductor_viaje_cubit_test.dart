@@ -15,7 +15,10 @@ import 'package:optiruta/features/viajes/domain/repositories/hito_repository.dar
 import 'package:optiruta/features/viajes/domain/repositories/viaje_repository.dart';
 import 'package:optiruta/features/viajes/domain/servicios/servicio_ubicacion.dart';
 import 'package:optiruta/features/viajes/domain/usecases/actualizar_valor_real_costo_use_case.dart';
+import 'package:optiruta/features/viajes/domain/usecases/agregar_costo_viaje_use_case.dart';
 import 'package:optiruta/features/viajes/domain/usecases/iniciar_viaje_use_case.dart';
+import 'package:optiruta/features/checklist/domain/repositories/checklist_repository.dart';
+import 'package:optiruta/features/checklist/domain/usecases/checklist_use_cases.dart';
 import 'package:optiruta/features/viajes/domain/usecases/listar_costos_viaje_use_case.dart';
 import 'package:optiruta/features/viajes/domain/usecases/listar_hitos_use_case.dart';
 import 'package:optiruta/features/viajes/domain/usecases/listar_viajes_activos_use_case.dart';
@@ -30,6 +33,8 @@ class _MockHitoRepository extends Mock implements HitoRepository {}
 class _MockCostoViajeRepository extends Mock implements CostoViajeRepository {}
 
 class _MockServicioUbicacion extends Mock implements ServicioUbicacion {}
+
+class _MockChecklistRepository extends Mock implements ChecklistRepository {}
 
 const Coordenada _aqui = Coordenada(6.2442, -75.5812);
 
@@ -50,6 +55,7 @@ void main() {
   late _MockHitoRepository hitoRepo;
   late _MockCostoViajeRepository costoRepo;
   late _MockServicioUbicacion ubicacion;
+  late _MockChecklistRepository checklistRepo;
 
   ConductorViajeCubit crear() => ConductorViajeCubit(
     listarActivos: ListarViajesActivosUseCase(viajeRepo),
@@ -59,6 +65,8 @@ void main() {
     iniciarViaje: IniciarViajeUseCase(viajeRepo),
     ubicacion: ubicacion,
     actualizarValorReal: ActualizarValorRealCostoUseCase(costoRepo),
+    agregarCosto: AgregarCostoViajeUseCase(costoRepo),
+    obtenerChecklist: ObtenerChecklistViajeUseCase(checklistRepo),
   );
 
   setUp(() {
@@ -66,6 +74,7 @@ void main() {
     hitoRepo = _MockHitoRepository();
     costoRepo = _MockCostoViajeRepository();
     ubicacion = _MockServicioUbicacion();
+    checklistRepo = _MockChecklistRepository();
     registerFallbackValue(_aqui);
     registerFallbackValue(DateTime(2026));
     registerFallbackValue(TipoHito.salida);
@@ -311,4 +320,75 @@ void main() {
       expect((cubit.state as ConductorViajeListo).procesando, isFalse);
     });
   });
+
+  test(
+    'agregarCostoLibre: crea el costo OTRO con descripción y recarga',
+    () async {
+      when(() => viajeRepo.listarActivos()).thenAnswer((_) async => [_viaje]);
+      when(() => hitoRepo.listarPorViaje('v-1'))
+          .thenAnswer((_) async => const <Hito>[]);
+      when(() => costoRepo.listarPorViaje('v-1'))
+          .thenAnswer((_) async => const <CostoViaje>[]);
+      when(
+        () => costoRepo.agregarOtro(
+          viajeId: 'v-1',
+          descripcion: 'Grúa',
+          valorReal: 350000,
+        ),
+      ).thenAnswer(
+        (_) async => const CostoViaje(
+          id: 'c-9',
+          viajeId: 'v-1',
+          categoria: CategoriaCosto.otro,
+          valorEstimado: 0,
+          valorReal: 350000,
+          fuente: FuenteCosto.manual,
+          descripcion: 'Grúa',
+        ),
+      );
+
+      final cubit = crear();
+      addTearDown(cubit.close);
+      await Future<void>.delayed(Duration.zero);
+
+      await cubit.agregarCostoLibre(descripcion: '  Grúa ', valor: 350000);
+
+      verify(
+        () => costoRepo.agregarOtro(
+          viajeId: 'v-1',
+          descripcion: 'Grúa',
+          valorReal: 350000,
+        ),
+      ).called(1);
+      expect(cubit.state, isA<ConductorViajeListo>());
+      expect((cubit.state as ConductorViajeListo).procesando, isFalse);
+    },
+  );
+
+  test(
+    'agregarCostoLibre: descripción vacía no llega al repositorio',
+    () async {
+      when(() => viajeRepo.listarActivos()).thenAnswer((_) async => [_viaje]);
+      when(() => hitoRepo.listarPorViaje('v-1'))
+          .thenAnswer((_) async => const <Hito>[]);
+      when(() => costoRepo.listarPorViaje('v-1'))
+          .thenAnswer((_) async => const <CostoViaje>[]);
+
+      final cubit = crear();
+      addTearDown(cubit.close);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        () => cubit.agregarCostoLibre(descripcion: '   ', valor: 1000),
+        throwsArgumentError,
+      );
+      verifyNever(
+        () => costoRepo.agregarOtro(
+          viajeId: any(named: 'viajeId'),
+          descripcion: any(named: 'descripcion'),
+          valorReal: any(named: 'valorReal'),
+        ),
+      );
+    },
+  );
 }

@@ -93,6 +93,9 @@ class HistorialCubit extends Cubit<HistorialState> {
       try {
         final double valor = await _rentabilidadMarginal(v.id)
             .then((r) => r.rentabilidad);
+        // El usuario pudo salir de la pantalla mientras llegaban las
+        // rentabilidades: un cubit cerrado ya no admite estados.
+        if (isClosed) return;
         final HistorialState actual = state;
         if (actual is! HistorialListo) return;
         emit(

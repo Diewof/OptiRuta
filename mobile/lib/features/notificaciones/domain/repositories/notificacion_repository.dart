@@ -19,9 +19,14 @@ class PaginaNotificaciones extends Equatable {
 /// ADMINISTRADOR: lo garantiza RLS. La implementación vive en `data` sobre
 /// `supabase_flutter`.
 abstract interface class NotificacionRepository {
+  /// [desde] (inclusive) y [hasta] (exclusive) acotan por fecha de creación;
+  /// con [soloNoLeidas] solo trae las pendientes.
   Future<PaginaNotificaciones> listar({
     required int pagina,
     required int tamano,
+    DateTime? desde,
+    DateTime? hasta,
+    bool soloNoLeidas = false,
   });
 
   Future<void> marcarLeida(String id);

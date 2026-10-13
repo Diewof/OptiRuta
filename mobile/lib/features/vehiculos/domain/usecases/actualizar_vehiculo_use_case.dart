@@ -1,3 +1,4 @@
+import '../entities/ficha_tecnica.dart';
 import '../entities/tipo_vehiculo.dart';
 import '../entities/vehiculo.dart';
 import '../repositories/vehiculo_repository.dart';
@@ -13,6 +14,7 @@ class ActualizarVehiculoUseCase {
     required TipoVehiculo tipo,
     required double capacidadCarga,
     required double rendimientoKmGalon,
+    FichaTecnica ficha = FichaTecnica.vacia,
   }) {
     return _repositorio.actualizar(
       id: id,
@@ -20,6 +22,7 @@ class ActualizarVehiculoUseCase {
       tipo: tipo,
       capacidadCarga: capacidadCarga,
       rendimientoKmGalon: rendimientoKmGalon,
+      ficha: ficha,
     );
   }
 }

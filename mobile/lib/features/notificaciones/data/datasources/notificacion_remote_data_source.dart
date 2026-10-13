@@ -10,16 +10,33 @@ class NotificacionRemoteDataSource {
 
   /// Pide `tamano + 1` filas para saber si hay una pagina siguiente sin un
   /// segundo viaje de red.
+  ///
+  /// [desde] (inclusive) y [hasta] (exclusive) acotan por fecha de creación;
+  /// con [soloNoLeidas] solo trae las pendientes.
   Future<List<Map<String, dynamic>>> listar({
     required int pagina,
     required int tamano,
+    DateTime? desde,
+    DateTime? hasta,
+    bool soloNoLeidas = false,
   }) {
-    final int desde = pagina * tamano;
-    return _client
+    final int inicio = pagina * tamano;
+    PostgrestFilterBuilder<List<Map<String, dynamic>>> consulta = _client
         .from('notificacion')
-        .select()
+        .select();
+    if (soloNoLeidas) consulta = consulta.eq('leida', false);
+    if (desde != null) {
+      consulta = consulta.gte(
+        'fecha_creacion',
+        desde.toUtc().toIso8601String(),
+      );
+    }
+    if (hasta != null) {
+      consulta = consulta.lt('fecha_creacion', hasta.toUtc().toIso8601String());
+    }
+    return consulta
         .order('fecha_creacion', ascending: false)
-        .range(desde, desde + tamano);
+        .range(inicio, inicio + tamano);
   }
 
   Future<void> marcarLeida(String id) {

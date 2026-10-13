@@ -1,4 +1,5 @@
 import '../../../../core/error/catalogo_failure.dart';
+import '../../domain/entities/ficha_tecnica.dart';
 import '../../domain/entities/tipo_vehiculo.dart';
 import '../../domain/entities/vehiculo.dart';
 import '../../domain/repositories/vehiculo_repository.dart';
@@ -34,6 +35,7 @@ class VehiculoRepositoryImpl implements VehiculoRepository {
     required TipoVehiculo tipo,
     required double capacidadCarga,
     required double rendimientoKmGalon,
+    FichaTecnica ficha = FichaTecnica.vacia,
   }) {
     return ejecutarCatalogo(() async {
       final Map<String, dynamic> fila = await _remote.crear(
@@ -42,6 +44,7 @@ class VehiculoRepositoryImpl implements VehiculoRepository {
           tipo: tipo,
           capacidadCarga: capacidadCarga,
           rendimientoKmGalon: rendimientoKmGalon,
+          ficha: ficha,
         ),
       );
       return VehiculoModel.aEntidad(fila);
@@ -55,6 +58,7 @@ class VehiculoRepositoryImpl implements VehiculoRepository {
     required TipoVehiculo tipo,
     required double capacidadCarga,
     required double rendimientoKmGalon,
+    FichaTecnica ficha = FichaTecnica.vacia,
   }) {
     return ejecutarCatalogo(() async {
       final Map<String, dynamic> fila = await _remote.actualizar(
@@ -64,6 +68,7 @@ class VehiculoRepositoryImpl implements VehiculoRepository {
           tipo: tipo,
           capacidadCarga: capacidadCarga,
           rendimientoKmGalon: rendimientoKmGalon,
+          ficha: ficha,
         ),
       );
       return VehiculoModel.aEntidad(fila);

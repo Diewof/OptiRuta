@@ -22,11 +22,19 @@ class RentabilidadRepositoryImpl implements RentabilidadRepository {
   Future<RentabilidadConsolidada> consolidada({
     required DateTime desde,
     required DateTime hasta,
+    String? clienteId,
+    String? conductorId,
+    String? vehiculoId,
+    String? ruta,
   }) {
     return ejecutarCatalogo(() async {
       final Map<String, dynamic> fila = await _remote.consolidada(
         desde: desde,
         hasta: hasta,
+        clienteId: clienteId,
+        conductorId: conductorId,
+        vehiculoId: vehiculoId,
+        ruta: ruta,
       );
       return RentabilidadModel.consolidadaDesdeFila(fila);
     });

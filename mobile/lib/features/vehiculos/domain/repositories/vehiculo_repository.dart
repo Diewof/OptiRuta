@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 
+import '../entities/ficha_tecnica.dart';
 import '../entities/tipo_vehiculo.dart';
 import '../entities/vehiculo.dart';
 
@@ -30,6 +31,7 @@ abstract interface class VehiculoRepository {
     required TipoVehiculo tipo,
     required double capacidadCarga,
     required double rendimientoKmGalon,
+    FichaTecnica ficha = FichaTecnica.vacia,
   });
 
   Future<Vehiculo> actualizar({
@@ -38,6 +40,7 @@ abstract interface class VehiculoRepository {
     required TipoVehiculo tipo,
     required double capacidadCarga,
     required double rendimientoKmGalon,
+    FichaTecnica ficha = FichaTecnica.vacia,
   });
 
   /// Baja logica (`activo = false`). Nunca borra la fila.

@@ -22,6 +22,7 @@ Widget _envolver(Widget home) {
     routes: <String, WidgetBuilder>{
       for (final String ruta in <String>[
         AppRoutes.adminAnalitica,
+        AppRoutes.adminSatisfaccion,
         AppRoutes.adminCalendario,
         AppRoutes.adminSeguimiento,
         AppRoutes.adminFlota,
@@ -54,7 +55,9 @@ void main() {
     for (final String d in <String>['Viajes', 'Flota', 'Personas', 'Más']) {
       expect(find.text(d), findsOneWidget);
     }
-    // Resumen no tiene pantallas hermanas: no hay sub-navegación.
+    // Resumen alterna Costos y Satisfacción; Calendario es de Viajes.
+    expect(find.text('Costos'), findsOneWidget);
+    expect(find.text('Satisfacción'), findsOneWidget);
     expect(find.text('Calendario'), findsNothing);
   });
 
@@ -99,6 +102,26 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Destino ${AppRoutes.adminSeguimiento}'), findsOneWidget);
+  });
+
+  testWidgets('Resumen alterna Costos y Satisfacción con la sub-navegación', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      _envolver(
+        const AdminScaffold(
+          titulo: 'Resumen',
+          seccionActual: AdminSection.analitica,
+          usuario: _admin,
+          body: SizedBox.shrink(),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Satisfacción'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Destino ${AppRoutes.adminSatisfaccion}'), findsOneWidget);
   });
 
   testWidgets('no muestra la campana en la propia pantalla de notificaciones', (

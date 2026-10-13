@@ -142,6 +142,8 @@ class AuthCubit extends Cubit<AuthState> {
       // AuthNoAutenticado llega por el stream.
     } on AuthFailure catch (falla) {
       emit(AuthError.desde(falla));
+    } catch (_) {
+      emit(AuthError.desde(AuthFailure.desconocido()));
     }
   }
 

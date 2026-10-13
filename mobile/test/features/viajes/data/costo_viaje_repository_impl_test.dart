@@ -62,4 +62,39 @@ void main() {
       expect(costo.valorReal, 1910000);
     },
   );
+
+  test(
+    'agregarOtro: envía estimado 0 y real, y mapea la descripción',
+    () async {
+      when(
+        () => remote.agregarOtro(
+          viajeId: 'v-1',
+          descripcion: 'Grúa',
+          valorEstimado: 0,
+          valorReal: 350000,
+        ),
+      ).thenAnswer(
+        (_) async => <String, dynamic>{
+          'id': 'c-9',
+          'viaje_id': 'v-1',
+          'categoria': 'OTRO',
+          'valor_estimado': 0,
+          'valor_real': 350000,
+          'fuente': 'MANUAL',
+          'descripcion': 'Grúa',
+        },
+      );
+
+      final CostoViaje c = await repo.agregarOtro(
+        viajeId: 'v-1',
+        descripcion: 'Grúa',
+        valorReal: 350000,
+      );
+
+      expect(c.categoria, CategoriaCosto.otro);
+      expect(c.descripcion, 'Grúa');
+      expect(c.etiqueta, 'Grúa');
+      expect(c.valorReal, 350000);
+    },
+  );
 }

@@ -63,6 +63,23 @@ abstract interface class ViajeRepository {
 
   Future<Viaje> cerrar(String viajeId);
 
+  /// Edita fecha de salida, peso y flete de un viaje abierto (RPC
+  /// `viaje_actualizar`). El servidor recalcula la comisión estimada.
+  Future<Viaje> actualizar({
+    required String viajeId,
+    required DateTime fechaSalidaProgramada,
+    required double? pesoCarga,
+    required double valorFlete,
+  });
+
+  /// Cancela un viaje no cerrado (RPC `viaje_cancelar`). El motivo es
+  /// obligatorio. El viaje queda en el historial como CANCELADO.
+  Future<Viaje> cancelar({required String viajeId, required String motivo});
+
+  /// Elimina un viaje no cerrado (RPC `viaje_eliminar`). Queda una bitácora
+  /// con el motivo; un viaje CERRADO no se puede eliminar.
+  Future<void> eliminar({required String viajeId, required String motivo});
+
   /// Un viaje con sus datos de listado (placa, conductor, cliente, mapa), p. ej.
   /// para abrirlo desde una notificación.
   Future<ViajeResumen> obtenerResumen(String viajeId);

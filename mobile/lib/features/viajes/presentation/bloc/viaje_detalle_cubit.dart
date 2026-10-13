@@ -7,6 +7,10 @@ import '../../domain/entities/estado_viaje.dart';
 import '../../domain/entities/hito.dart';
 import '../../domain/entities/rentabilidad_marginal.dart';
 import '../../domain/entities/viaje_resumen.dart';
+import '../../domain/usecases/actualizar_estimado_costo_use_case.dart';
+import '../../domain/usecases/actualizar_viaje_use_case.dart';
+import '../../domain/usecases/agregar_costo_viaje_use_case.dart';
+import '../../domain/usecases/cancelar_eliminar_viaje_use_cases.dart';
 import '../../domain/usecases/cerrar_viaje_use_case.dart';
 import '../../domain/usecases/listar_ajustes_viaje_use_case.dart';
 import '../../domain/usecases/listar_costos_viaje_use_case.dart';
@@ -33,6 +37,11 @@ class ViajeDetalleCubit extends Cubit<ViajeDetalleState> {
     required ListarAjustesViajeUseCase listarAjustes,
     required CerrarViajeUseCase cerrarViaje,
     required RegistrarAjusteViajeUseCase registrarAjuste,
+    required ActualizarViajeUseCase actualizarViaje,
+    required CancelarViajeUseCase cancelarViaje,
+    required EliminarViajeUseCase eliminarViaje,
+    required AgregarCostoViajeUseCase agregarCosto,
+    required ActualizarEstimadoCostoUseCase actualizarEstimado,
   }) : _viaje = viaje,
        _listarHitos = listarHitos,
        _listarCostos = listarCostos,
@@ -40,6 +49,11 @@ class ViajeDetalleCubit extends Cubit<ViajeDetalleState> {
        _listarAjustes = listarAjustes,
        _cerrarViaje = cerrarViaje,
        _registrarAjuste = registrarAjuste,
+       _actualizarViaje = actualizarViaje,
+       _cancelarViaje = cancelarViaje,
+       _eliminarViaje = eliminarViaje,
+       _agregarCosto = agregarCosto,
+       _actualizarEstimado = actualizarEstimado,
        _estado = viaje.estado,
        super(const ViajeDetalleCargando()) {
     cargar();
@@ -52,6 +66,11 @@ class ViajeDetalleCubit extends Cubit<ViajeDetalleState> {
   final ListarAjustesViajeUseCase _listarAjustes;
   final CerrarViajeUseCase _cerrarViaje;
   final RegistrarAjusteViajeUseCase _registrarAjuste;
+  final ActualizarViajeUseCase _actualizarViaje;
+  final CancelarViajeUseCase _cancelarViaje;
+  final EliminarViajeUseCase _eliminarViaje;
+  final AgregarCostoViajeUseCase _agregarCosto;
+  final ActualizarEstimadoCostoUseCase _actualizarEstimado;
   EstadoViaje _estado;
 
   Future<void> cargar({bool silencioso = false}) async {
@@ -118,4 +137,66 @@ class ViajeDetalleCubit extends Cubit<ViajeDetalleState> {
       rethrow;
     }
   }
+
+  /// Ejecuta [accion] marcando el estado como «procesando». Deja propagar
+  /// la falla para que la hoja la explique y permita reintentar.
+  Future<void> _conProceso(Future<void> Function() accion) async {
+    final ViajeDetalleState actual = state;
+    if (actual is! ViajeDetalleListo || actual.procesando) return;
+    emit(actual.copiarCon(procesando: true));
+    try {
+      await accion();
+    } on Object {
+      emit(actual.copiarCon(procesando: false));
+      rethrow;
+    }
+  }
+
+  /// Edita fecha, peso y flete (RPC `viaje_actualizar`, RF-04).
+  Future<void> editar({
+    required DateTime fechaSalidaProgramada,
+    required double? pesoCarga,
+    required double valorFlete,
+  }) => _conProceso(() async {
+    await _actualizarViaje(
+      viajeId: _viaje.id,
+      fechaSalidaProgramada: fechaSalidaProgramada,
+      pesoCarga: pesoCarga,
+      valorFlete: valorFlete,
+    );
+    await cargar(silencioso: true);
+  });
+
+  /// Cancela el viaje con motivo (RPC `viaje_cancelar`).
+  Future<void> cancelar(String motivo) => _conProceso(() async {
+    _estado = (await _cancelarViaje(viajeId: _viaje.id, motivo: motivo)).estado;
+    await cargar(silencioso: true);
+  });
+
+  /// Elimina el viaje con motivo (RPC `viaje_eliminar`). Tras eliminarlo, la
+  /// pantalla debe cerrarse: ya no hay nada que recargar.
+  Future<void> eliminar(String motivo) =>
+      _conProceso(() => _eliminarViaje(viajeId: _viaje.id, motivo: motivo));
+
+  /// Agrega un costo libre con valor estimado (RF-14, administrador).
+  Future<void> agregarCostoEstimado({
+    required String descripcion,
+    required double valorEstimado,
+  }) => _conProceso(() async {
+    await _agregarCosto(
+      viajeId: _viaje.id,
+      descripcion: descripcion,
+      valorEstimado: valorEstimado,
+    );
+    await cargar(silencioso: true);
+  });
+
+  /// Corrige el estimado de un costo (RF-14, administrador).
+  Future<void> corregirEstimado({
+    required String costoId,
+    required double valorEstimado,
+  }) => _conProceso(() async {
+    await _actualizarEstimado(costoId: costoId, valorEstimado: valorEstimado);
+    await cargar(silencioso: true);
+  });
 }

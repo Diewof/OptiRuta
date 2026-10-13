@@ -51,6 +51,37 @@ class ViajeRemoteDataSource {
     return fila as Map<String, dynamic>;
   }
 
+  Future<Map<String, dynamic>> actualizar(
+    Map<String, dynamic> parametros,
+  ) async {
+    final dynamic fila = await _client.rpc(
+      'viaje_actualizar',
+      params: parametros,
+    );
+    return fila as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> cancelar({
+    required String viajeId,
+    required String motivo,
+  }) async {
+    final dynamic fila = await _client.rpc(
+      'viaje_cancelar',
+      params: <String, dynamic>{'p_viaje_id': viajeId, 'p_motivo': motivo},
+    );
+    return fila as Map<String, dynamic>;
+  }
+
+  Future<void> eliminar({
+    required String viajeId,
+    required String motivo,
+  }) async {
+    await _client.rpc(
+      'viaje_eliminar',
+      params: <String, dynamic>{'p_viaje_id': viajeId, 'p_motivo': motivo},
+    );
+  }
+
   Future<Map<String, dynamic>> cerrar(String viajeId) async {
     final dynamic fila = await _client.rpc(
       'viaje_cerrar',

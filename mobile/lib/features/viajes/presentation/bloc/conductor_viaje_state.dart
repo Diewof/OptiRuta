@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 
+import '../../../checklist/domain/entities/checklist.dart';
 import '../../domain/entities/costo_viaje.dart';
 import '../../domain/entities/hito.dart';
 import '../../domain/entities/viaje_resumen.dart';
@@ -35,12 +36,17 @@ class ConductorViajeListo extends ConductorViajeState {
     required this.viaje,
     required this.hitos,
     required this.costos,
+    this.checklist,
     this.procesando = false,
   });
 
   final ViajeResumen viaje;
   final List<Hito> hitos;
   final List<CostoViaje> costos;
+
+  /// Checklist más reciente del viaje; solo se consulta con el viaje
+  /// ASIGNADO (antes de salir). Nulo = todavía no lo hizo.
+  final ChecklistViaje? checklist;
 
   /// `true` mientras una acción de escritura (registrar hito, confirmar
   /// valor real) está en vuelo, para deshabilitar el control que la disparó.
@@ -51,10 +57,17 @@ class ConductorViajeListo extends ConductorViajeState {
       viaje: viaje,
       hitos: hitos,
       costos: costos,
+      checklist: checklist,
       procesando: procesando ?? this.procesando,
     );
   }
 
   @override
-  List<Object?> get props => <Object?>[viaje, hitos, costos, procesando];
+  List<Object?> get props => <Object?>[
+    viaje,
+    hitos,
+    costos,
+    checklist,
+    procesando,
+  ];
 }

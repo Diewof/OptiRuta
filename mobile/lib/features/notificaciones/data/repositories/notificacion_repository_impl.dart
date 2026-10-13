@@ -12,11 +12,17 @@ class NotificacionRepositoryImpl implements NotificacionRepository {
   Future<PaginaNotificaciones> listar({
     required int pagina,
     required int tamano,
+    DateTime? desde,
+    DateTime? hasta,
+    bool soloNoLeidas = false,
   }) {
     return ejecutarCatalogo(() async {
       final List<Map<String, dynamic>> filas = await _remote.listar(
         pagina: pagina,
         tamano: tamano,
+        desde: desde,
+        hasta: hasta,
+        soloNoLeidas: soloNoLeidas,
       );
       final bool hayMas = filas.length > tamano;
       final List<Map<String, dynamic>> filasPagina = hayMas

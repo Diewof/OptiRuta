@@ -65,6 +65,10 @@ dependencies:
   geolocator: ^14.1.1
   flutter_map: ^8.3.2
   latlong2: ^0.10.1
+  # Exportar el reporte de viajes a PDF (RF-28). `pdf` arma el documento y
+  # `printing` abre el diálogo del sistema para guardarlo o compartirlo.
+  pdf: ^3.13.1
+  printing: ^5.15.1
 dev_dependencies:
   flutter_test:
     sdk: flutter

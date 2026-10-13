@@ -20,7 +20,12 @@ enum AdminDestino {
 /// a un [AdminDestino]; las de un mismo destino se alternan con la
 /// sub-navegación (p. ej. Viajes: Calendario ↔ Seguimiento).
 enum AdminSection {
-  analitica(AdminDestino.resumen, 'Resumen', AppRoutes.adminAnalitica),
+  analitica(AdminDestino.resumen, 'Costos', AppRoutes.adminAnalitica),
+  satisfaccion(
+    AdminDestino.resumen,
+    'Satisfacción',
+    AppRoutes.adminSatisfaccion,
+  ),
   calendario(AdminDestino.viajes, 'Calendario', AppRoutes.adminCalendario),
   seguimiento(AdminDestino.viajes, 'Seguimiento', AppRoutes.adminSeguimiento),
   flota(AdminDestino.flota, 'Flota', AppRoutes.adminFlota),
@@ -31,7 +36,9 @@ enum AdminSection {
     AdminDestino.mas,
     'Notificaciones',
     AppRoutes.adminNotificaciones,
-  );
+  ),
+  tarifas(AdminDestino.mas, 'Tarifas ACPM', AppRoutes.adminTarifas),
+  reportes(AdminDestino.mas, 'Reportes', AppRoutes.adminReportes);
 
   const AdminSection(this.destino, this.etiqueta, this.ruta);
 

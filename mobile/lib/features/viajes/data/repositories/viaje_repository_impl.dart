@@ -109,6 +109,46 @@ class ViajeRepositoryImpl implements ViajeRepository {
   }
 
   @override
+  Future<Viaje> actualizar({
+    required String viajeId,
+    required DateTime fechaSalidaProgramada,
+    required double? pesoCarga,
+    required double valorFlete,
+  }) {
+    return ejecutarCatalogo(() async {
+      final Map<String, dynamic> fila = await _remote.actualizar(
+        <String, dynamic>{
+          'p_viaje_id': viajeId,
+          'p_fecha_salida_programada': fechaSalidaProgramada
+              .toUtc()
+              .toIso8601String(),
+          'p_peso_carga': pesoCarga,
+          'p_valor_flete': valorFlete,
+        },
+      );
+      return ViajeModel.aEntidad(fila);
+    });
+  }
+
+  @override
+  Future<Viaje> cancelar({required String viajeId, required String motivo}) {
+    return ejecutarCatalogo(() async {
+      final Map<String, dynamic> fila = await _remote.cancelar(
+        viajeId: viajeId,
+        motivo: motivo,
+      );
+      return ViajeModel.aEntidad(fila);
+    });
+  }
+
+  @override
+  Future<void> eliminar({required String viajeId, required String motivo}) {
+    return ejecutarCatalogo(
+      () => _remote.eliminar(viajeId: viajeId, motivo: motivo),
+    );
+  }
+
+  @override
   Future<ViajeResumen> obtenerResumen(String viajeId) {
     return ejecutarCatalogo(() async {
       final Map<String, dynamic> fila = await _remote.obtenerResumen(viajeId);

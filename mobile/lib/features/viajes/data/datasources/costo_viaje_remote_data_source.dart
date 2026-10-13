@@ -16,6 +16,39 @@ class CostoViajeRemoteDataSource {
         .order('categoria');
   }
 
+  /// Inserta un costo adicional libre (categoría OTRO con descripción).
+  Future<Map<String, dynamic>> agregarOtro({
+    required String viajeId,
+    required String descripcion,
+    required double valorEstimado,
+    double? valorReal,
+  }) async {
+    final List<Map<String, dynamic>> filas = await _client
+        .from('costo_viaje')
+        .insert(<String, dynamic>{
+          'viaje_id': viajeId,
+          'categoria': 'OTRO',
+          'descripcion': descripcion,
+          'valor_estimado': valorEstimado,
+          'valor_real': valorReal,
+          'fuente': 'MANUAL',
+        })
+        .select();
+    return filas.first;
+  }
+
+  Future<Map<String, dynamic>> actualizarEstimado({
+    required String costoId,
+    required double valorEstimado,
+  }) async {
+    final List<Map<String, dynamic>> filas = await _client
+        .from('costo_viaje')
+        .update(<String, dynamic>{'valor_estimado': valorEstimado})
+        .eq('id', costoId)
+        .select();
+    return filas.first;
+  }
+
   Future<Map<String, dynamic>> actualizarValorReal({
     required String costoId,
     required double valorReal,

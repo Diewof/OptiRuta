@@ -28,13 +28,29 @@ class MonitorRutaSinPermiso extends MonitorRutaState {
 }
 
 class MonitorRutaActivo extends MonitorRutaState {
-  const MonitorRutaActivo({this.posicion, this.alerta});
+  const MonitorRutaActivo({
+    this.posicion,
+    this.alerta,
+    this.consentimientoPendiente = false,
+    this.registrando = false,
+  });
 
   final Coordenada? posicion;
+
+  /// El conductor aún no decidió si acepta el registro de ubicación (RF-23).
+  final bool consentimientoPendiente;
+
+  /// Hay consentimiento: la posición se envía cada pocos minutos (RF-21).
+  final bool registrando;
 
   /// Última situación detectada; se limpia cuando el conductor la descarta.
   final TipoAlertaViaje? alerta;
 
   @override
-  List<Object?> get props => <Object?>[posicion, alerta];
+  List<Object?> get props => <Object?>[
+    posicion,
+    alerta,
+    consentimientoPendiente,
+    registrando,
+  ];
 }

@@ -207,12 +207,20 @@ class _EnCursoTab extends StatelessWidget {
                 final ViajeActivo va = viajes[i];
                 return InkWell(
                   borderRadius: AppRadius.lgAll,
-                  onTap: () => Navigator.of(context).push<void>(
-                    MaterialPageRoute<void>(
-                      builder: (_) =>
-                          ViajeDetallePage(viaje: va.viaje, puedeCerrar: true),
-                    ),
-                  ),
+                  onTap: () {
+                    final SeguimientoEnCursoCubit cubit = context
+                        .read<SeguimientoEnCursoCubit>();
+                    Navigator.of(context)
+                        .push<void>(
+                          MaterialPageRoute<void>(
+                            builder: (_) => ViajeDetallePage(
+                              viaje: va.viaje,
+                              puedeCerrar: true,
+                            ),
+                          ),
+                        )
+                        .then((_) => cubit.cargar());
+                  },
                   child: AppCard(
                     stripe: AppCardStripe.left,
                     stripeColor: va.retraso
@@ -483,12 +491,17 @@ class _HistorialRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return ViajeResumenCard(
       viaje: item.viaje,
-      onTap: () => Navigator.of(context).push<void>(
-        MaterialPageRoute<void>(
-          builder: (_) =>
-              ViajeDetallePage(viaje: item.viaje, puedeCerrar: true),
-        ),
-      ),
+      onTap: () {
+        final HistorialCubit cubit = context.read<HistorialCubit>();
+        Navigator.of(context)
+            .push<void>(
+              MaterialPageRoute<void>(
+                builder: (_) =>
+                    ViajeDetallePage(viaje: item.viaje, puedeCerrar: true),
+              ),
+            )
+            .then((_) => cubit.recargar());
+      },
       pie: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: <Widget>[

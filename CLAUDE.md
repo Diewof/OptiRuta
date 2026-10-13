@@ -47,7 +47,8 @@ No microservicios, event sourcing, CQRS, hexagonal, colas ni bus de eventos. **N
   - `lib/core/`, `lib/features/<feature>/{data,domain,presentation}/`. Organizar por feature, no por tipo técnico.
 - `supabase/`
   - `migrations/` — SQL versionado (`<timestamp>_descripcion_snake_case.sql`, generado por Supabase CLI).
-  - `functions/<nombre>/` — Edge Functions (`peajes-correo`, `rutas`).
+  - `functions/<nombre>/` — Edge Functions (`peajes-correo`, `rutas`, `precio-acpm-scraper`, `encuestas`).
+  - `apps-script/` — script de Google Apps Script de la encuesta de satisfacción (se copia a mano al Form; no se despliega con la CLI).
   - `seed.sql` — datos base para desarrollo local.
   - `tests/` — pruebas `pgTAP`.
   - `config.toml`.
@@ -55,17 +56,39 @@ No microservicios, event sourcing, CQRS, hexagonal, colas ni bus de eventos. **N
 
 ## Dominio: viajes
 
-- Ciclo de vida: `PLANIFICADO → ASIGNADO → EN_CURSO → FINALIZADO → CERRADO`.
+- Ciclo de vida: `PLANIFICADO → ASIGNADO → EN_CURSO → FINALIZADO → CERRADO`. Estado terminal adicional `CANCELADO` (decisión del dueño, 2026-10-10): lo alcanza cualquier estado no cerrado vía la RPC `viaje_cancelar(p_viaje_id, p_motivo)` (motivo obligatorio, solo administrador); no cuenta en rentabilidad ni métricas.
 - Editable hasta `CERRADO`. Transiciones validadas en la función RPC `viaje_cambiar_estado` + trigger que rechaza transiciones inválidas.
-- Un viaje cerrado **no se edita ni se borra**: todo cambio se registra en `ajuste_viaje` (append-only) vía la RPC `viaje_registrar_ajuste(p_viaje_id, p_motivo, …)` con **motivo obligatorio**. `ajuste_viaje` tiene RLS solo con políticas de `INSERT` y `SELECT` (sin `UPDATE`/`DELETE`), y se revoca `UPDATE`/`DELETE` al rol de la app. No existe borrado de viajes.
+- Un viaje cerrado **no se edita ni se borra**: todo cambio se registra en `ajuste_viaje` (append-only) vía la RPC `viaje_registrar_ajuste(p_viaje_id, p_motivo, …)` con **motivo obligatorio**. `ajuste_viaje` tiene RLS solo con políticas de `INSERT` y `SELECT` (sin `UPDATE`/`DELETE`), y se revoca `UPDATE`/`DELETE` al rol de la app. Un viaje **no cerrado** sí se puede eliminar (decisión del dueño, 2026-10-10) únicamente vía la RPC `viaje_eliminar(p_viaje_id, p_motivo)` (solo administrador, motivo obligatorio), que deja una fila en la bitácora append-only `viaje_eliminado`; no hay `DELETE` directo.
 - Todo dato automático se guarda como par **`valor_estimado` / `valor_real`** separados, editables y auditables. Excepción: `viaje.valor_flete` es un monto pactado con el cliente, capturado por el administrador al crear el viaje — un único valor, no un par estimado/real.
 - Rentabilidad marginal: `valor_flete − (ACPM + peajes + cargue + descargue + parqueadero + otros + comisión variable)`. El mantenimiento amortizado y el sueldo fijo prorrateado **no** entran aquí, solo en la consolidada por período.
 - ACPM estimado = `distancia ÷ rendimiento_km_galon × precio_galon`, con factor de ajuste simple por rango de tonelaje (no modelo estadístico). Precio en tabla `tarifa_combustible` (ciudad + fecha de vigencia). El cálculo vive en RPC o columna generada, no en la app.
 - Hitos registrados por el conductor: `SALIDA`, `LLEGADA_CARGUE`, `SALIDA_CON_CARGA`, `LLEGADA_DESTINO`. Se comparan contra el tiempo estimado para detectar retrasos.
-- Ubicación en mapa: origen y destino se eligen con buscador + mapa (OpenStreetMap, gratis, solo Android: `flutter_map` dibuja el mapa, limitado a Colombia; el autocompletado de lugares con Photon y la ruta con OSRM pasan por la Edge Function `rutas`, sin API key) y se guardan como texto + coordenadas (`origen_lat/lng`, `destino_lat/lng`, nullables para viajes antiguos). El mapa del conductor muestra su posición en vivo **solo en el teléfono: la posición nunca se persiste ni se envía continuamente**. Con el viaje `EN_CURSO` el teléfono detecta parada prolongada (30 min) y desvío de ruta (1 km) y envía **solo un evento puntual** vía la RPC `viaje_registrar_alerta`, que notifica al administrador. Sin tracking continuo.
+- Ubicación en mapa: origen y destino se eligen con buscador + mapa (OpenStreetMap, gratis, solo Android: `flutter_map` dibuja el mapa, limitado a Colombia; el autocompletado de lugares con Photon y la ruta con OSRM pasan por la Edge Function `rutas`, sin API key) y se guardan como texto + coordenadas (`origen_lat/lng`, `destino_lat/lng`, nullables para viajes antiguos). El mapa del conductor muestra su posición en vivo. Con el viaje `EN_CURSO` el teléfono detecta parada prolongada (30 min) y desvío de ruta (1 km) y envía un evento puntual vía la RPC `viaje_registrar_alerta`, que notifica al administrador. **Registro de ubicación (RF-21/23, autorizado 2026-10-10):** solo con consentimiento del conductor (`conductor.consentimiento_ubicacion_fecha`, RPC `conductor_consentimiento_ubicacion`), solo con el viaje `EN_CURSO` y la app abierta, la app envía un punto cada ~5 min vía `viaje_registrar_ubicacion` a `ubicacion_viaje` (append-only, el administrador lo ve en el mapa del viaje). En Android el seguimiento corre como servicio en primer plano (geolocator, notificación fija) mientras el viaje está `EN_CURSO`, por lo que continúa con la pantalla bloqueada o la app minimizada; `MonitorRutaRegistro` conserva el monitor aunque el conductor cambie de pestaña y lo libera al terminar el viaje o cerrar sesión.
 - Peajes: solo vía Edge Function `peajes-correo` (webhook del correo GoPass), protegida con **clave de servicio en cabecera** (secreto de la función), **no** con JWT de Supabase Auth. Extrae placa, peaje, fecha/hora, valor e inserta vía RPC con `service_role`. Sin scraping.
 - Rentabilidad **marginal** (por viaje) vs. **consolidada** (por período) — separadas, en RPC distintas (`rentabilidad_marginal(p_viaje_id)`, `rentabilidad_consolidada(p_desde, p_hasta)`). Sueldo fijo del conductor se calcula por período; la comisión se asocia al viaje.
 - No borrar vehículos/conductores: `activo = false`. FK de `viaje` con `ON DELETE RESTRICT`.
+
+## Dominio: flota (vehículos, checklist, mantenimiento)
+
+Decisiones del dueño, 2026-10-11 (RF-29 a RF-32):
+
+- **Bloqueo al comenzar** (`viaje_iniciar`): SOAT y tecnomecánica vigentes (`documento_vehiculo`, el **último registrado** por tipo —corregir un vencimiento es registrar otro—; vence hoy = vigente hoy, zona America/Bogota) y checklist del viaje de las últimas 12 h sin bloqueo pendiente. Tarjeta de operación y pólizas **no** entran. Crear/asignar un viaje no se bloquea: solo se bloquea salir.
+- **Checklist** (`checklist_viaje` / `checklist_respuesta` / `checklist_autorizacion`, append-only, solo vía RPC `checklist_registrar` y `checklist_autorizar_salida`): falla en ítem crítico ⇒ BLOQUEADO hasta autorización del administrador con motivo; falla no crítica ⇒ alerta al administrador (`CHECKLIST_FALLA`). El catálogo `checklist_item` se carga por migración, sin editor.
+- **Kilometraje**: solo GPS acumulado (sin lectura manual del tablero). `viaje_fijar_km` lo calcula al finalizar (`viaje.km_recorridos` + `km_origen` GPS/ESTIMADO). El odómetro del vehículo es **derivado** (`odometro_inicial_km` + km de viajes finalizados, o su distancia estimada si no hay medición), nunca una columna actualizada a mano; es aproximado.
+- **Mantenimiento preventivo**: `plan_mantenimiento` por vehículo (copia de `tipo_mantenimiento` al crear el vehículo, por trigger); estado AL_DIA/PROXIMO/VENCIDO calculado en `plan_mantenimiento_calculo()` y consumido por `notificacion_generar`. Solo alerta, no bloquea. Registrar vía RPC `mantenimiento_registrar`, **desde la hoja de vida del vehículo** (Flota → vehículo → «Registrar mantenimiento»; no hay pantalla global de Mantenimiento).
+- **Hoja de vida**: `vehiculo_hoja_vida` arma la línea de tiempo al vuelo desde las tablas de origen; no hay copia que mantener.
+- Alertas de flota deduplicadas por `notificacion.clave` (documento+escalón, plan+ciclo), no por vehículo.
+
+## Dominio: satisfacción del cliente
+
+Decisiones del dueño, 2026-10-12 (RF-33):
+
+- **Encuesta post-viaje** (`encuesta_satisfaccion`, una por viaje): nace sola cuando el viaje pasa a `FINALIZADO` (trigger delgado `viaje_finalizado_crear_encuesta` → `encuesta_crear_para_viaje`; el viaje finaliza por dos RPC distintas). Lleva token único, snapshot de cliente/conductor/vehículo y tiempos estimado/real. Sin correo del cliente ⇒ `SIN_CONTACTO` (se comparte a mano). Solo se escribe por RPC; RLS: solo el administrador lee.
+- **Fuente externa**: Google Form + Apps Script (`supabase/apps-script/encuestas.gs`). Apps Script envía el correo (MailApp, gratis) y reenvía las respuestas a la Edge Function `encuestas` (clave de servicio en cabecera `ENCUESTAS_SECRET`, sin JWT; guarda solo ese secreto, nunca la `service_role`). La función solo valida, delega en las RPC `encuesta_pendientes_envio` / `encuesta_registrar_envio` / `encuesta_registrar_respuesta` (solo `service_role`) y traduce errores.
+- **Escala**: CSAT 1–5 en entrega, servicio, atención y puntualidad percibida + NPS 0–10 + comentario. Vigencia 14 días (`encuesta_vencer`, `pg_cron` diario), sin recordatorio. Respuesta con alguna dimensión ≤ 2 o NPS ≤ 6 ⇒ notificación `SATISFACCION_BAJA`.
+- **Puntualidad real vs. percibida**: la real sale de los hitos con el mismo criterio de `metricas_periodo_v2` (estimado + el mayor entre 20 % y 30 min); la percibida es la pregunta del cliente. No se mezclan.
+- **Resumen** se divide en pestañas «Costos \| Satisfacción» (`AdminSection.analitica` / `satisfaccion`). Semáforo (solo presentación): CSAT verde ≥ 4,2, ámbar 3,5–4,2, rojo < 3,5; NPS verde ≥ 50, ámbar 0–50, rojo < 0; menos de 5 respuestas ⇒ «Sin datos suficientes».
+- **Pospuesto**: QR (requiere paquete nuevo), WhatsApp automático (Cloud API de pago; hoy se copia el mensaje con el enlace), recordatorio de encuesta.
 
 ## Patrones
 
@@ -102,6 +125,7 @@ Dos superficies:
 2. **Edge Functions** (solo integraciones), rutas estables con prefijo `v1`:
    - `POST /functions/v1/peajes-correo` — webhook GoPass, auth por clave de servicio en cabecera.
    - `POST /functions/v1/rutas` — estimación de distancia/tiempo vía proveedor externo.
+   - `POST /functions/v1/encuestas` — puente con el Google Form de satisfacción; operación en el cuerpo (`accion`: `PENDIENTES`, `ENVIO`, `RESPUESTA`), auth por clave de servicio en cabecera.
    - Cuerpo de error consistente: `{ timestamp, status, error (CODIGO_MAYUS_GUION), message (español), path }`.
    - Códigos: `200/201/204/400/401/403/404/409`; `422` para reglas de negocio; `500` solo no controlados.
 
@@ -148,7 +172,7 @@ Dos superficies:
 
 ## Fuera del MVP (no implementar)
 
-Tracking GPS continuo (guardar o transmitir la posición periódicamente) y servicio en segundo plano para ubicación (la detección de parada/desvío solo funciona con la app abierta), analítica predictiva, integración RNDC, facturación electrónica DIAN, multiempresa, operadores de peaje distintos de GoPass, soporte web, filtros de reportes, exportación de reportes (PDF u otro formato), calendario interactivo (mensual/semanal) para fechas de viaje. Tampoco: servidor de aplicación propio, Supabase Realtime para lógica de negocio, mover a Edge Functions reglas que puedan ir en Postgres.
+Seguimiento de ubicación cuando la app fue cerrada del todo (solo funciona mientras el proceso vive; el servicio en primer plano lo mantiene con la pantalla bloqueada o minimizada), push FCM, analítica predictiva, integración RNDC, facturación electrónica DIAN, multiempresa, operadores de peaje distintos de GoPass, soporte web, calendario interactivo (mensual/semanal) para fechas de viaje. (Entraron al alcance el 2026-10-10 por decisión del dueño: registro de ubicación con consentimiento, y filtros + exportación PDF de reportes vía `reporte_viajes`.) Tampoco: servidor de aplicación propio, Supabase Realtime para lógica de negocio, mover a Edge Functions reglas que puedan ir en Postgres.
 
 La actualización automática del precio de ACPM **sí entra en el MVP** (decisión confirmada en `diseno-base-de-datos-optiruta.md` sección 6, que reabrió y cerró esta exclusión): Edge Function `precio-acpm-scraper` + RPC `tarifa_combustible_registrar_automatico` + `pg_cron` mensual, acotada a una sola ciudad de referencia (Medellín) con validación de variación ±15% antes de sobrescribir `tarifa_combustible`.
 

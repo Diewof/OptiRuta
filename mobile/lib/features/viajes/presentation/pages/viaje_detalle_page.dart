@@ -1,3 +1,8 @@
+import '../../../checklist/presentation/widgets/checklist_viaje_card.dart';
+import '../../../satisfaccion/domain/repositories/satisfaccion_repository.dart';
+import '../../../satisfaccion/domain/usecases/satisfaccion_use_cases.dart';
+import '../../../satisfaccion/presentation/widgets/encuesta_viaje_card.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -8,6 +13,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/fecha_utils.dart';
 import '../../../../core/utils/moneda_utils.dart';
+import '../../../../core/widgets/app_alert.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/cifra_animada.dart';
 import '../../../../core/widgets/error_state.dart';
@@ -39,7 +45,15 @@ import '../../domain/usecases/rentabilidad_marginal_use_case.dart';
 import '../bloc/viaje_detalle_cubit.dart';
 import '../bloc/viaje_detalle_state.dart';
 import '../widgets/cerrar_viaje_sheets.dart';
-import '../widgets/mapa_ruta_viaje.dart';
+import '../../domain/usecases/actualizar_estimado_costo_use_case.dart';
+import '../../domain/usecases/actualizar_viaje_use_case.dart';
+import '../../domain/usecases/agregar_costo_viaje_use_case.dart';
+import '../../domain/usecases/cancelar_eliminar_viaje_use_cases.dart';
+import '../widgets/agregar_costo_sheet.dart';
+import '../widgets/editar_estimado_sheet.dart';
+import '../widgets/editar_viaje_sheet.dart';
+import '../widgets/mapa_ruta_con_ubicacion.dart';
+import '../widgets/motivo_sheet.dart';
 import '../widgets/estimado_real_tabla.dart';
 import '../widgets/hito_timeline.dart';
 
@@ -87,6 +101,17 @@ class ViajeDetallePage extends StatelessWidget {
         registrarAjuste: RegistrarAjusteViajeUseCase(
           context.read<AjusteViajeRepository>(),
         ),
+        actualizarViaje: ActualizarViajeUseCase(
+          context.read<ViajeRepository>(),
+        ),
+        cancelarViaje: CancelarViajeUseCase(context.read<ViajeRepository>()),
+        eliminarViaje: EliminarViajeUseCase(context.read<ViajeRepository>()),
+        agregarCosto: AgregarCostoViajeUseCase(
+          context.read<CostoViajeRepository>(),
+        ),
+        actualizarEstimado: ActualizarEstimadoCostoUseCase(
+          context.read<CostoViajeRepository>(),
+        ),
       ),
       child: _Vista(viaje: viaje, puedeCerrar: puedeCerrar, alerta: alerta),
     );
@@ -126,7 +151,7 @@ class _Vista extends StatelessWidget {
         .where((CostoViaje c) => c.valorReal == null)
         .map(
           (CostoViaje c) =>
-              '${c.categoria.etiqueta.toLowerCase()} ≈ ${moneda.formatear(c.valorEstimado)}',
+              '${c.etiqueta.toLowerCase()} ≈ ${moneda.formatear(c.valorEstimado)}',
         )
         .toList();
     final bool? cerrado = await CerrarViajeSheet.mostrar(
@@ -153,6 +178,77 @@ class _Vista extends StatelessWidget {
     }
   }
 
+  Future<void> _editar(BuildContext context, ViajeDetalleListo e) async {
+    final ViajeDetalleCubit cubit = context.read<ViajeDetalleCubit>();
+    final NavigatorState navigator = Navigator.of(context);
+    final bool? ok = await EditarViajeSheet.mostrar(
+      context,
+      fechaActual: viaje.fechaSalidaProgramada,
+      pesoActual: viaje.pesoCarga,
+      fleteActual: e.marginal.valorFlete,
+      alGuardar: (DateTime fecha, double? peso, double flete) => cubit.editar(
+        fechaSalidaProgramada: fecha,
+        pesoCarga: peso,
+        valorFlete: flete,
+      ),
+    );
+    // Los datos del encabezado vienen del listado: se vuelve a él para que
+    // se recargue con lo nuevo.
+    if (ok == true) navigator.pop(true);
+  }
+
+  Future<void> _cancelar(BuildContext context) async {
+    final ViajeDetalleCubit cubit = context.read<ViajeDetalleCubit>();
+    final bool? ok = await MotivoSheet.mostrar(
+      context,
+      titulo: 'Cancelar viaje ${viaje.remision}',
+      mensaje:
+          'El viaje queda en el historial como cancelado y no cuenta en la '
+          'rentabilidad. El vehículo y el conductor quedan libres.',
+      textoConfirmar: 'Cancelar viaje',
+      alConfirmar: cubit.cancelar,
+    );
+    if (ok == true && context.mounted) {
+      announceForAccessibility(context, 'Viaje ${viaje.remision} cancelado');
+    }
+  }
+
+  Future<void> _eliminar(BuildContext context) async {
+    final ViajeDetalleCubit cubit = context.read<ViajeDetalleCubit>();
+    final NavigatorState navigator = Navigator.of(context);
+    final bool? ok = await MotivoSheet.mostrar(
+      context,
+      titulo: 'Eliminar viaje ${viaje.remision}',
+      mensaje:
+          'Se borran el viaje, sus hitos, costos y ubicaciones. No se puede '
+          'deshacer; queda un registro con el motivo.',
+      textoConfirmar: 'Eliminar viaje',
+      alConfirmar: cubit.eliminar,
+    );
+    if (ok == true) navigator.pop(true);
+  }
+
+  Future<void> _agregarCosto(BuildContext context) async {
+    final ViajeDetalleCubit cubit = context.read<ViajeDetalleCubit>();
+    await AgregarCostoSheet.mostrar(
+      context,
+      comoEstimado: true,
+      alGuardar: (String descripcion, double valor) => cubit
+          .agregarCostoEstimado(descripcion: descripcion, valorEstimado: valor),
+    );
+  }
+
+  Future<void> _editarEstimado(BuildContext context, CostoViaje c) async {
+    final ViajeDetalleCubit cubit = context.read<ViajeDetalleCubit>();
+    await EditarEstimadoSheet.mostrar(
+      context,
+      etiqueta: c.etiqueta,
+      estimado: c.valorEstimado,
+      alGuardar: (double v) =>
+          cubit.corregirEstimado(costoId: c.id, valorEstimado: v),
+    );
+  }
+
   Future<void> _ajustar(BuildContext context, ViajeDetalleListo e) async {
     final ViajeDetalleCubit cubit = context.read<ViajeDetalleCubit>();
     final NumberFormatCop moneda = NumberFormatCop();
@@ -161,7 +257,7 @@ class _Vista extends StatelessWidget {
       conceptos: <ConceptoAjustable>[
         for (final CostoViaje c in _costosDelViaje(e.costos))
           ConceptoAjustable(
-            etiqueta: c.categoria.etiqueta,
+            etiqueta: c.etiqueta,
             valorActual: moneda.formatear(c.valorReal ?? c.valorEstimado),
           ),
       ],
@@ -196,10 +292,45 @@ class _Vista extends StatelessWidget {
             (listo.estado == EstadoViaje.finalizado ||
                 listo.estado == EstadoViaje.cerrado);
 
+        final bool editable =
+            puedeCerrar &&
+            listo != null &&
+            listo.estado != EstadoViaje.cerrado &&
+            listo.estado != EstadoViaje.cancelado;
+        final bool puedeEliminar =
+            puedeCerrar && listo != null && listo.estado != EstadoViaje.cerrado;
+
         return Scaffold(
           appBar: AppBar(
             backgroundColor: AppColors.navy,
             foregroundColor: AppColors.onNavy,
+            actions: <Widget>[
+              if (puedeEliminar && !listo.procesando)
+                PopupMenuButton<String>(
+                  tooltip: 'Más acciones',
+                  onSelected: (String a) {
+                    if (a == 'editar') _editar(context, listo);
+                    if (a == 'cancelar') _cancelar(context);
+                    if (a == 'eliminar') _eliminar(context);
+                  },
+                  itemBuilder: (BuildContext _) => <PopupMenuEntry<String>>[
+                    if (editable)
+                      const PopupMenuItem<String>(
+                        value: 'editar',
+                        child: Text('Editar viaje'),
+                      ),
+                    if (editable)
+                      const PopupMenuItem<String>(
+                        value: 'cancelar',
+                        child: Text('Cancelar viaje'),
+                      ),
+                    const PopupMenuItem<String>(
+                      value: 'eliminar',
+                      child: Text('Eliminar viaje'),
+                    ),
+                  ],
+                ),
+            ],
             title: Text(
               'Viaje ${viaje.remision}',
               style: AppTypography.subtitle.copyWith(color: AppColors.onNavy),
@@ -237,6 +368,11 @@ class _Vista extends StatelessWidget {
               estado: state,
               costos: _costosDelViaje(state.costos),
               alerta: alerta,
+              mostrarChecklist: puedeCerrar,
+              alAgregarCosto: editable ? () => _agregarCosto(context) : null,
+              alEditarEstimado: editable
+                  ? (CostoViaje c) => _editarEstimado(context, c)
+                  : null,
             ),
           },
         );
@@ -314,12 +450,34 @@ class _BarraAccion extends StatelessWidget {
   }
 }
 
+/// RF-11: el ACPM automático queda en 0 cuando no hay tarifa para la ciudad.
+bool _acpmSinTarifa(List<CostoViaje> costos) => costos.any(
+  (CostoViaje c) =>
+      c.categoria == CategoriaCosto.acpm &&
+      c.valorEstimado == 0 &&
+      c.valorReal == null,
+);
+
 class _Contenido extends StatelessWidget {
-  const _Contenido({required this.estado, required this.costos, this.alerta});
+  const _Contenido({
+    required this.estado,
+    required this.costos,
+    this.alerta,
+    this.mostrarChecklist = false,
+    this.alAgregarCosto,
+    this.alEditarEstimado,
+  });
 
   final ViajeDetalleListo estado;
   final List<CostoViaje> costos;
   final Coordenada? alerta;
+
+  /// Solo el administrador ve el checklist del vehículo y puede autorizar.
+  final bool mostrarChecklist;
+
+  /// Solo el administrador con el viaje abierto (RF-14).
+  final VoidCallback? alAgregarCosto;
+  final void Function(CostoViaje costo)? alEditarEstimado;
 
   BaseCalculo get _base {
     if (costos.isEmpty) return BaseCalculo.proyectada;
@@ -354,6 +512,21 @@ class _Contenido extends StatelessWidget {
         padding: const EdgeInsets.all(AppSpacing.x4),
         children: <Widget>[
           _Resumen(estado: estado, alerta: alerta),
+          if (mostrarChecklist)
+            ChecklistViajeCard(
+              viajeId: estado.viaje.id,
+              viajeAsignado: estado.estado == EstadoViaje.asignado,
+            ),
+          if (mostrarChecklist &&
+              (estado.estado == EstadoViaje.finalizado ||
+                  estado.estado == EstadoViaje.cerrado))
+            EncuestaViajeCard(
+              viajeId: estado.viaje.id,
+              remision: estado.viaje.remision,
+              obtener: ObtenerEncuestaDeViajeUseCase(
+                context.read<SatisfaccionRepository>(),
+              ),
+            ),
           const SizedBox(height: AppSpacing.x3),
           Semantics(
             container: true,
@@ -425,7 +598,7 @@ class _Contenido extends StatelessWidget {
                       sinReal.isEmpty
                           ? 'Todos los costos están confirmados.'
                           : '${sinReal.length == 1 ? 'Falta 1 costo real' : 'Faltan ${sinReal.length} costos reales'}: '
-                                '${sinReal.map((CostoViaje c) => c.categoria.etiqueta.toLowerCase()).join(', ')}. '
+                                '${sinReal.map((CostoViaje c) => c.etiqueta.toLowerCase()).join(', ')}. '
                                 'Mientras tanto se usa el estimado.',
                       style: AppTypography.caption,
                     ),
@@ -434,6 +607,17 @@ class _Contenido extends StatelessWidget {
               ),
             ),
           ),
+          if (_acpmSinTarifa(costos)) ...<Widget>[
+            const SizedBox(height: AppSpacing.x3),
+            const AppAlert(
+              tono: AppAlertTono.advertencia,
+              titulo: 'ACPM estimado en \$0',
+              mensaje:
+                  'No hay una tarifa de combustible vigente para el origen de '
+                  'este viaje, así que el estimado de ACPM no se pudo calcular. '
+                  'Regístrala en Más → Tarifas de ACPM.',
+            ),
+          ],
           const SizedBox(height: AppSpacing.x3),
           AppCard(
             child: Column(
@@ -457,7 +641,7 @@ class _Contenido extends StatelessWidget {
                   filas: <FilaEstimadoReal>[
                     for (final CostoViaje c in costos)
                       FilaEstimadoReal(
-                        concepto: c.categoria.etiqueta,
+                        concepto: c.etiqueta,
                         fuente: c.categoria == CategoriaCosto.peaje
                             ? (c.valorReal == null
                                   ? 'GoPass · esperando'
@@ -478,6 +662,48 @@ class _Contenido extends StatelessWidget {
               ],
             ),
           ),
+          if (alAgregarCosto != null && alEditarEstimado != null) ...<Widget>[
+            const SizedBox(height: AppSpacing.x3),
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  const Text(
+                    'Administrar costos',
+                    style: AppTypography.subtitle,
+                  ),
+                  const SizedBox(height: AppSpacing.x1),
+                  const Text(
+                    'Corrige los valores estimados o suma un costo que no está en la lista.',
+                    style: AppTypography.caption,
+                  ),
+                  const SizedBox(height: AppSpacing.x2),
+                  for (final CostoViaje c in costos.where(
+                    (CostoViaje c) => c.categoria != CategoriaCosto.peaje,
+                  ))
+                    Material(
+                      type: MaterialType.transparency,
+                      child: ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(c.etiqueta),
+                        subtitle: Text(
+                          'Estimado ${NumberFormatCop().formatear(c.valorEstimado)}',
+                          style: AppTypography.caption,
+                        ),
+                        trailing: const Icon(LucideIcons.pencil, size: 18),
+                        onTap: () => alEditarEstimado!(c),
+                      ),
+                    ),
+                  const SizedBox(height: AppSpacing.x2),
+                  OutlinedButton.icon(
+                    onPressed: alAgregarCosto,
+                    icon: const Icon(LucideIcons.plus, size: 18),
+                    label: const Text('Agregar costo'),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: AppSpacing.x3),
           const AppCard(
             stripe: AppCardStripe.left,
@@ -596,7 +822,7 @@ class _Resumen extends StatelessWidget {
           const SizedBox(height: AppSpacing.x3),
           Text('${v.origen} → ${v.destino}', style: AppTypography.title),
           const SizedBox(height: AppSpacing.x2),
-          MapaRutaViaje(viaje: v, alerta: alerta),
+          MapaRutaConUbicacion(viaje: v, alerta: alerta),
           const SizedBox(height: AppSpacing.x3),
           Row(
             children: <Widget>[

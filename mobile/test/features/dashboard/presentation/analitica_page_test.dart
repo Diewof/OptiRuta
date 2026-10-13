@@ -2,10 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:optiruta/features/clientes/domain/repositories/cliente_repository.dart';
+import 'package:optiruta/features/conductores/domain/repositories/conductor_repository.dart';
 import 'package:optiruta/core/theme/app_theme.dart';
 import 'package:optiruta/features/autenticacion/domain/entities/rol_usuario.dart';
 import 'package:optiruta/features/autenticacion/domain/entities/usuario.dart';
+import 'package:optiruta/features/dashboard/domain/entities/metricas.dart';
+import 'package:optiruta/features/dashboard/domain/repositories/metricas_repository.dart';
 import 'package:optiruta/features/dashboard/presentation/pages/analitica_page.dart';
+import 'package:optiruta/features/notificaciones/domain/entities/notificacion.dart';
+import 'package:optiruta/features/notificaciones/domain/entities/tipo_notificacion.dart';
+import 'package:optiruta/features/notificaciones/domain/repositories/notificacion_repository.dart';
 import 'package:optiruta/features/vehiculos/domain/entities/tipo_vehiculo.dart';
 import 'package:optiruta/features/vehiculos/domain/entities/vehiculo.dart';
 import 'package:optiruta/features/vehiculos/domain/repositories/vehiculo_repository.dart';
@@ -21,6 +28,11 @@ class _MockViajeRepository extends Mock implements ViajeRepository {}
 
 class _MockRentabilidadRepository extends Mock
     implements RentabilidadRepository {}
+
+class _MockMetricasRepository extends Mock implements MetricasRepository {}
+
+class _MockNotificacionRepository extends Mock
+    implements NotificacionRepository {}
 
 const Usuario _admin = Usuario(
   id: 'u-1',
@@ -47,11 +59,17 @@ String _mes() {
   return m[DateTime.now().month - 1];
 }
 
+class _MockClienteRepository extends Mock implements ClienteRepository {}
+
+class _MockConductorRepository extends Mock implements ConductorRepository {}
+
 void main() {
+  setUpAll(() => registerFallbackValue(DimensionMetrica.ruta));
+
   testWidgets('muestra los KPIs y el estado de flota con datos reales', (
     WidgetTester tester,
   ) async {
-    await tester.binding.setSurfaceSize(const Size(390, 1400));
+    await tester.binding.setSurfaceSize(const Size(390, 2600));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     final vehiculoRepo = _MockVehiculoRepository();
@@ -104,12 +122,82 @@ void main() {
       ),
     );
 
+    final metricasRepo = _MockMetricasRepository();
+    final notifRepo = _MockNotificacionRepository();
+    when(
+      () => metricasRepo.periodo(
+        desde: any(named: 'desde'),
+        hasta: any(named: 'hasta'),
+      ),
+    ).thenAnswer(
+      (_) async => const MetricasPeriodo(
+        viajesCerrados: 46,
+        kmTotal: 18400,
+        costosDirectos: 33400000,
+        costoPorKm: 1815,
+        viajesATiempo: 30,
+        viajesMedidos: 40,
+        utilizacionFlotaPct: 62.5,
+      ),
+    );
+    when(
+      () => metricasRepo.porDimension(
+        desde: any(named: 'desde'),
+        hasta: any(named: 'hasta'),
+        dimension: any(named: 'dimension'),
+      ),
+    ).thenAnswer(
+      (_) async => const <MetricaDimension>[
+        MetricaDimension(
+          clave: 'Medellín → Cali',
+          viajes: 4,
+          totalFlete: 40000000,
+          totalCostos: 25000000,
+          rentabilidad: 15000000,
+          kmTotal: 1800,
+          viajesATiempo: 3,
+          viajesMedidos: 4,
+        ),
+      ],
+    );
+    when(
+      () => notifRepo.listar(
+        pagina: 0,
+        tamano: any(named: 'tamano'),
+        desde: any(named: 'desde'),
+        hasta: any(named: 'hasta'),
+        soloNoLeidas: any(named: 'soloNoLeidas'),
+      ),
+    ).thenAnswer(
+      (_) async => PaginaNotificaciones(
+        notificaciones: <Notificacion>[
+          Notificacion(
+            id: 'n-1',
+            tipo: TipoNotificacion.desvioRuta,
+            titulo: 'Desvío de ruta',
+            mensaje: 'Bogotá → Cali: el conductor se desvió.',
+            leida: false,
+            fechaCreacion: DateTime(2026, 10, 9),
+          ),
+        ],
+        hayMas: false,
+      ),
+    );
+
     await tester.pumpWidget(
       MultiRepositoryProvider(
         providers: <RepositoryProvider<Object>>[
+          RepositoryProvider<ClienteRepository>.value(
+            value: _MockClienteRepository(),
+          ),
+          RepositoryProvider<ConductorRepository>.value(
+            value: _MockConductorRepository(),
+          ),
           RepositoryProvider<VehiculoRepository>.value(value: vehiculoRepo),
           RepositoryProvider<ViajeRepository>.value(value: viajeRepo),
           RepositoryProvider<RentabilidadRepository>.value(value: rentaRepo),
+          RepositoryProvider<MetricasRepository>.value(value: metricasRepo),
+          RepositoryProvider<NotificacionRepository>.value(value: notifRepo),
         ],
         child: MaterialApp(
           theme: AppTheme.light,
@@ -128,5 +216,13 @@ void main() {
     expect(find.text('Viajes en curso'), findsNWidgets(2)); // KPI + sección
     expect(find.text('Bogotá → Cali'), findsOneWidget);
     expect(find.text('Desglose de costos'), findsOneWidget);
+    // RF-24: costo por km; RF-26: alertas activas; RF-25: rendimiento.
+    expect(find.text('Costo por km'), findsOneWidget);
+    expect(find.text(r'$1.815'), findsOneWidget);
+    expect(find.text('Cumplimiento'), findsOneWidget);
+    expect(find.text('75,0 %'), findsOneWidget);
+    expect(find.text('1 alerta activa'), findsOneWidget);
+    expect(find.text('Desvío de ruta'), findsOneWidget);
+    expect(find.text('Medellín → Cali'), findsOneWidget);
   });
 }

@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/error/catalogo_failure.dart';
+import '../../domain/entities/ficha_tecnica.dart';
 import '../../domain/entities/tipo_vehiculo.dart';
 import '../../domain/usecases/actualizar_vehiculo_use_case.dart';
 import '../../domain/usecases/crear_vehiculo_use_case.dart';
@@ -28,6 +29,7 @@ class VehiculoFormCubit extends Cubit<VehiculoFormState> {
     required TipoVehiculo tipo,
     required double capacidadCarga,
     required double rendimientoKmGalon,
+    FichaTecnica ficha = FichaTecnica.vacia,
   }) async {
     emit(const VehiculoFormEnviando());
     try {
@@ -37,6 +39,7 @@ class VehiculoFormCubit extends Cubit<VehiculoFormState> {
           tipo: tipo,
           capacidadCarga: capacidadCarga,
           rendimientoKmGalon: rendimientoKmGalon,
+          ficha: ficha,
         );
       } else {
         await _actualizar(
@@ -45,6 +48,7 @@ class VehiculoFormCubit extends Cubit<VehiculoFormState> {
           tipo: tipo,
           capacidadCarga: capacidadCarga,
           rendimientoKmGalon: rendimientoKmGalon,
+          ficha: ficha,
         );
       }
       emit(const VehiculoFormExito());

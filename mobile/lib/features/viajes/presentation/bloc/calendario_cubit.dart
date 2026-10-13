@@ -33,6 +33,7 @@ class CalendarioCubit extends Cubit<CalendarioState> {
       );
       final DateTime hasta = DateTime(desde.year, desde.month + 1);
       final viajes = await _listarPorRango(desde: desde, hasta: hasta);
+      if (isClosed) return;
       emit(
         CalendarioListo(
           mesMostrado: desde,
@@ -41,7 +42,7 @@ class CalendarioCubit extends Cubit<CalendarioState> {
         ),
       );
     } on CatalogoFailure catch (falla) {
-      emit(CalendarioError(falla.mensaje));
+      if (!isClosed) emit(CalendarioError(falla.mensaje));
     }
   }
 
