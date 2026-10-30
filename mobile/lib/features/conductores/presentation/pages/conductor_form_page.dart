@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/fecha_utils.dart';
 import '../../../../core/widgets/app_alert.dart';
 import '../../../../core/widgets/app_text_field.dart';
+import '../../../../core/widgets/miles_formatter.dart';
 import '../../domain/entities/conductor.dart';
 import '../../domain/entities/tipo_pago.dart';
 import '../../domain/entities/usuario_disponible.dart';
@@ -57,7 +59,9 @@ class _ConductorFormViewState extends State<_ConductorFormView> {
     text: (widget.conductor?.porcentajeComision ?? 10).toString(),
   );
   late final TextEditingController _sueldoBase = TextEditingController(
-    text: (widget.conductor?.sueldoBase ?? 0).toString(),
+    text: MilesFormatter.conMiles(
+      (widget.conductor?.sueldoBase ?? 0).round().toString(),
+    ),
   );
   late DateTime _fechaVencimiento =
       widget.conductor?.fechaVencimientoLicencia ??
@@ -87,7 +91,9 @@ class _ConductorFormViewState extends State<_ConductorFormView> {
 
   void _guardar(BuildContext context) {
     final double? porcentaje = double.tryParse(_porcentajeComision.text.trim());
-    final double? sueldo = double.tryParse(_sueldoBase.text.trim());
+    final double? sueldo = double.tryParse(
+      _sueldoBase.text.replaceAll(RegExp(r'\D'), ''),
+    );
     if (_licencia.text.trim().isEmpty || porcentaje == null || sueldo == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -217,9 +223,8 @@ class _ConductorFormViewState extends State<_ConductorFormView> {
                   AppTextField(
                     label: 'Sueldo base',
                     controller: _sueldoBase,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: <TextInputFormatter>[MilesFormatter()],
                     textInputAction: TextInputAction.done,
                   ),
                   const SizedBox(height: AppSpacing.x6),

@@ -6,8 +6,11 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/moneda_utils.dart';
+import '../../../../core/widgets/admin_section.dart';
+import '../../../../core/widgets/admin_shell_scope.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/chip_opcion.dart';
+import '../../../../core/widgets/status_badge.dart';
 import '../../../notificaciones/domain/entities/notificacion.dart';
 import '../../../notificaciones/presentation/widgets/tipo_notificacion_visual.dart';
 import '../../domain/entities/metricas.dart';
@@ -115,9 +118,15 @@ class AlertasActivasCard extends StatelessWidget {
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton(
-              onPressed: () =>
+              onPressed: () {
+                final AdminShellScope? shell = AdminShellScope.maybeOf(context);
+                if (shell != null) {
+                  shell.irA(AdminSection.notificaciones);
+                } else {
                   Navigator.of(context)
-                      .pushReplacementNamed(AppRoutes.adminNotificaciones),
+                      .pushNamed(AppRoutes.adminNotificaciones);
+                }
+              },
               child: const Text('Ver todas las notificaciones'),
             ),
           ),
@@ -235,8 +244,9 @@ class _Indicador extends StatelessWidget {
   }
 }
 
-/// Rendimiento por ruta, cliente o conductor (RF-25), ordenado por
-/// rentabilidad.
+/// Rendimiento por ruta, cliente, conductor o placa (RF-25), ordenado por
+/// margen promedio por viaje. Marca con «Bajo margen» lo que el servidor
+/// considera por debajo del mínimo (informe de rentabilidad).
 class RendimientoCard extends StatefulWidget {
   const RendimientoCard({required this.rendimiento, super.key});
 
@@ -275,7 +285,7 @@ class _RendimientoCardState extends State<RendimientoCard> {
           const SizedBox(height: AppSpacing.x3),
           if (filas.isEmpty)
             const Text(
-              'Todavía no hay viajes cerrados en este período.',
+              'Todavía no hay viajes finalizados en este período.',
               style: AppTypography.caption,
             )
           else
@@ -294,9 +304,17 @@ class _FilaRendimiento extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final double? cumplimiento = fila.cumplimientoPct;
+    final double? margen = fila.margenPct;
     final String viajes = fila.viajes == 1
         ? '1 viaje'
         : '${fila.viajes} viajes';
+    final String detalle = <String>[
+      viajes,
+      if (margen != null) 'margen ${formatearPorcentaje(margen)}',
+      cumplimiento == null
+          ? 'sin medición de tiempos'
+          : 'a tiempo ${formatearPorcentaje(cumplimiento)}',
+    ].join(' · ');
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.x3),
@@ -314,23 +332,38 @@ class _FilaRendimiento extends StatelessWidget {
                     color: AppColors.textPrimary,
                   ),
                 ),
-                Text(
-                  '$viajes · ${cumplimiento == null ? 'sin medición de tiempos' : 'a tiempo ${formatearPorcentaje(cumplimiento)}'}',
-                  style: AppTypography.caption,
-                ),
+                Text(detalle, style: AppTypography.caption),
+                if (fila.bajoMargen) ...<Widget>[
+                  const SizedBox(height: AppSpacing.x1),
+                  const StatusBadge(
+                    label: 'Bajo margen',
+                    tone: StatusTone.warning,
+                  ),
+                ],
               ],
             ),
           ),
           const SizedBox(width: AppSpacing.x2),
-          Text(
-            formatearMillones(fila.rentabilidad),
-            style: AppTypography.body.copyWith(
-              fontWeight: FontWeight.w600,
-              color: fila.rentabilidad < 0
-                  ? AppColors.error
-                  : AppColors.textPrimary,
-              fontFeatures: AppTypography.tabular,
-            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: <Widget>[
+              Text(
+                formatearMillones(fila.rentabilidad),
+                style: AppTypography.body.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: fila.rentabilidad < 0
+                      ? AppColors.error
+                      : AppColors.textPrimary,
+                  fontFeatures: AppTypography.tabular,
+                ),
+              ),
+              Text(
+                '${formatearMillones(fila.margenPromedio, decimales: 2)} / viaje',
+                style: AppTypography.caption.copyWith(
+                  fontFeatures: AppTypography.tabular,
+                ),
+              ),
+            ],
           ),
         ],
       ),

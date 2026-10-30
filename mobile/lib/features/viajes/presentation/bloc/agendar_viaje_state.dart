@@ -3,6 +3,7 @@ import 'package:equatable/equatable.dart';
 import '../../../clientes/domain/entities/cliente.dart';
 import '../../../conductores/domain/entities/conductor.dart';
 import '../../../vehiculos/domain/entities/vehiculo.dart';
+import '../../domain/entities/disponibilidad.dart';
 import '../../domain/entities/ruta_estimada.dart';
 import '../../domain/entities/viaje.dart';
 
@@ -39,6 +40,8 @@ class AgendarViajeListo extends AgendarViajeState {
     this.errorAcpm,
     this.enviando = false,
     this.errorEnvio,
+    this.avisosVehiculos = const <String, AvisoDisponibilidad>{},
+    this.avisosConductores = const <String, AvisoDisponibilidad>{},
   });
 
   final List<Cliente> clientes;
@@ -56,6 +59,11 @@ class AgendarViajeListo extends AgendarViajeState {
   final bool enviando;
   final String? errorEnvio;
 
+  /// Aviso de documentos y cruces por id, para la fecha elegida. Vacíos hasta
+  /// que se elige la fecha.
+  final Map<String, AvisoDisponibilidad> avisosVehiculos;
+  final Map<String, AvisoDisponibilidad> avisosConductores;
+
   AgendarViajeListo copiarCon({
     RutaEstimada? ruta,
     bool limpiarRuta = false,
@@ -70,6 +78,8 @@ class AgendarViajeListo extends AgendarViajeState {
     bool? enviando,
     String? errorEnvio,
     bool limpiarErrorEnvio = false,
+    Map<String, AvisoDisponibilidad>? avisosVehiculos,
+    Map<String, AvisoDisponibilidad>? avisosConductores,
   }) {
     return AgendarViajeListo(
       clientes: clientes,
@@ -83,6 +93,8 @@ class AgendarViajeListo extends AgendarViajeState {
       errorAcpm: limpiarErrorAcpm ? null : (errorAcpm ?? this.errorAcpm),
       enviando: enviando ?? this.enviando,
       errorEnvio: limpiarErrorEnvio ? null : (errorEnvio ?? this.errorEnvio),
+      avisosVehiculos: avisosVehiculos ?? this.avisosVehiculos,
+      avisosConductores: avisosConductores ?? this.avisosConductores,
     );
   }
 
@@ -99,6 +111,8 @@ class AgendarViajeListo extends AgendarViajeState {
     errorAcpm,
     enviando,
     errorEnvio,
+    avisosVehiculos,
+    avisosConductores,
   ];
 }
 

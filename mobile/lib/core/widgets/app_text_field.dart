@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../accessibility/announce.dart';
@@ -32,6 +33,7 @@ class AppTextField extends StatefulWidget {
     this.validMessage = 'Campo válido',
     this.isPassword = false,
     this.keyboardType,
+    this.inputFormatters,
     this.textInputAction,
     this.autofillHints,
     this.onSubmitted,
@@ -54,6 +56,7 @@ class AppTextField extends StatefulWidget {
   final String validMessage;
   final bool isPassword;
   final TextInputType? keyboardType;
+  final List<TextInputFormatter>? inputFormatters;
   final TextInputAction? textInputAction;
   final Iterable<String>? autofillHints;
   final ValueChanged<String>? onSubmitted;
@@ -119,6 +122,7 @@ class _AppTextFieldState extends State<AppTextField> {
           enableSuggestions: !widget.isPassword,
           autocorrect: !widget.isPassword,
           keyboardType: widget.keyboardType,
+          inputFormatters: widget.inputFormatters,
           textInputAction: widget.textInputAction,
           autofillHints: widget.autofillHints,
           onSubmitted: widget.onSubmitted,

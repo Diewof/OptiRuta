@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:optiruta/core/theme/app_theme.dart';
+import 'package:optiruta/features/calidad/domain/repositories/calidad_repository.dart';
 import 'package:optiruta/features/autenticacion/domain/entities/rol_usuario.dart';
 import 'package:optiruta/features/autenticacion/domain/entities/usuario.dart';
 import 'package:optiruta/features/conductores/domain/entities/conductor.dart';
@@ -11,6 +12,8 @@ import 'package:optiruta/features/conductores/domain/repositories/conductor_repo
 import 'package:optiruta/features/conductores/presentation/pages/conductores_list_page.dart';
 
 class _MockConductorRepository extends Mock implements ConductorRepository {}
+
+class _MockCalidad extends Mock implements CalidadRepository {}
 
 const Usuario _admin = Usuario(
   id: 'u-1',
@@ -40,9 +43,14 @@ Conductor _conductor({
 
 void main() {
   late _MockConductorRepository repo;
+  late _MockCalidad calidad;
 
   setUp(() {
     repo = _MockConductorRepository();
+    calidad = _MockCalidad();
+    // Sin calificación disponible el indicador no se muestra.
+    when(() => calidad.resumenDeConductor(any(), any(), any()))
+        .thenThrow(Exception('sin calificación'));
   });
 
   Future<void> montar(WidgetTester tester, List<Conductor> conductores) {
@@ -56,8 +64,11 @@ void main() {
     );
 
     return tester.pumpWidget(
-      RepositoryProvider<ConductorRepository>.value(
-        value: repo,
+      MultiRepositoryProvider(
+        providers: <RepositoryProvider<Object?>>[
+          RepositoryProvider<ConductorRepository>.value(value: repo),
+          RepositoryProvider<CalidadRepository>.value(value: calidad),
+        ],
         child: MaterialApp(
           theme: AppTheme.light,
           home: const ConductoresListPage(usuario: _admin),
@@ -102,5 +113,24 @@ void main() {
     expect(find.text('Licencia vencida'), findsOneWidget);
     expect(find.textContaining('Licencia vence en'), findsOneWidget);
     expect(find.text('Licencia vigente'), findsOneWidget);
+  });
+
+  testWidgets('buscar filtra por nombre sin importar tildes ni mayúsculas', (
+    WidgetTester tester,
+  ) async {
+    final DateTime lejos = DateTime.now().add(const Duration(days: 400));
+    await montar(tester, <Conductor>[
+      _conductor(id: '1', nombre: 'José Peña', vencimiento: lejos),
+      _conductor(id: '2', nombre: 'Camilo Rojas', vencimiento: lejos),
+    ]);
+    await tester.pumpAndSettle();
+    expect(find.text('José Peña'), findsOneWidget);
+    expect(find.text('Camilo Rojas'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), 'JOSE pena');
+    await tester.pumpAndSettle();
+
+    expect(find.text('José Peña'), findsOneWidget);
+    expect(find.text('Camilo Rojas'), findsNothing);
   });
 }

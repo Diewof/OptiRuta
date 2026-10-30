@@ -1,3 +1,6 @@
+import '../../../../core/utils/busqueda_utils.dart';
+import '../../../../core/widgets/campo_busqueda.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -157,6 +160,7 @@ class _ListaClientes extends StatefulWidget {
 
 class _ListaClientesState extends State<_ListaClientes> {
   final ScrollController _scroll = ScrollController();
+  String _consulta = '';
 
   @override
   void initState() {
@@ -180,7 +184,12 @@ class _ListaClientesState extends State<_ListaClientes> {
   @override
   Widget build(BuildContext context) {
     final ClienteListListo state = widget.state;
-    return RefreshIndicator(
+    final List<Cliente> items = filtrarPorTexto<Cliente>(
+      state.clientes,
+      _consulta,
+      (Cliente c) => <String?>[c.nombre, c.documento, c.correo, c.telefono],
+    );
+    final Widget lista = RefreshIndicator(
       onRefresh: () => context.read<ClienteListCubit>().recargar(),
       child: ListView.separated(
         controller: _scroll,
@@ -190,21 +199,30 @@ class _ListaClientesState extends State<_ListaClientes> {
           AppSpacing.x4,
           96,
         ),
-        itemCount: state.clientes.length + (state.hayMas ? 1 : 0),
+        itemCount: items.length + (state.hayMas ? 1 : 0),
         separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.x2),
         itemBuilder: (BuildContext context, int i) {
-          if (i >= state.clientes.length) {
+          if (i >= items.length) {
             return const Padding(
               padding: EdgeInsets.symmetric(vertical: AppSpacing.x4),
               child: Center(child: CircularProgressIndicator()),
             );
           }
           return _ClienteCard(
-            cliente: state.clientes[i],
+            cliente: items[i],
             esAdministrador: widget.esAdministrador,
           );
         },
       ),
+    );
+    return Column(
+      children: <Widget>[
+        CampoBusqueda(
+          etiqueta: 'Buscar cliente',
+          alCambiar: (String t) => setState(() => _consulta = t),
+        ),
+        Expanded(child: lista),
+      ],
     );
   }
 }

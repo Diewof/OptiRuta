@@ -25,6 +25,14 @@ import 'features/clientes/data/datasources/cliente_remote_data_source.dart';
 import 'features/dashboard/data/datasources/metricas_remote_data_source.dart';
 import 'features/dashboard/data/repositories/metricas_repository_impl.dart';
 import 'features/dashboard/domain/repositories/metricas_repository.dart';
+import 'features/calidad/data/repositories/calidad_repository_impl.dart';
+import 'features/combustible/data/datasources/combustible_remote_data_source.dart';
+import 'features/combustible/data/repositories/combustible_repository_impl.dart';
+import 'features/combustible/domain/repositories/combustible_repository.dart';
+import 'features/esperas/data/datasources/espera_remote_data_source.dart';
+import 'features/esperas/data/repositories/espera_repository_impl.dart';
+import 'features/esperas/domain/repositories/espera_repository.dart';
+import 'features/calidad/domain/repositories/calidad_repository.dart';
 import 'features/satisfaccion/data/repositories/satisfaccion_repository_impl.dart';
 import 'features/satisfaccion/domain/repositories/satisfaccion_repository.dart';
 import 'features/clientes/data/repositories/cliente_repository_impl.dart';
@@ -59,6 +67,7 @@ import 'features/viajes/data/repositories/costo_viaje_repository_impl.dart';
 import 'features/viajes/data/repositories/hito_repository_impl.dart';
 import 'features/viajes/data/repositories/rentabilidad_repository_impl.dart';
 import 'features/viajes/data/repositories/ruta_repository_impl.dart';
+import 'features/viajes/data/repositories/pausa_activa_repository_impl.dart';
 import 'features/viajes/data/repositories/ubicacion_viaje_repository_impl.dart';
 import 'features/viajes/data/servicios/servicio_ubicacion_impl.dart';
 import 'features/viajes/data/repositories/viaje_repository_impl.dart';
@@ -68,6 +77,7 @@ import 'features/viajes/domain/repositories/hito_repository.dart';
 import 'features/viajes/domain/repositories/rentabilidad_repository.dart';
 import 'features/viajes/domain/repositories/ruta_repository.dart';
 import 'features/viajes/domain/servicios/servicio_ubicacion.dart';
+import 'features/viajes/domain/repositories/pausa_activa_repository.dart';
 import 'features/viajes/domain/repositories/ubicacion_viaje_repository.dart';
 import 'features/viajes/presentation/bloc/monitor_ruta_registro.dart';
 import 'features/viajes/domain/repositories/viaje_repository.dart';
@@ -90,10 +100,14 @@ Future<void> main() async {
   );
   final UbicacionViajeRepository ubicacionViajeRepository =
       UbicacionViajeRepositoryImpl(client);
+  final PausaActivaRepository pausaActivaRepository = PausaActivaRepositoryImpl(
+    client,
+  );
   final MonitorRutaRegistro monitorRegistro = MonitorRutaRegistro(
     ubicacion: const ServicioUbicacionImpl(),
     viajes: viajeRepository,
     ubicaciones: ubicacionViajeRepository,
+    pausaActiva: pausaActivaRepository,
   );
   // Sin sesión no se sigue ni se comparte la ubicación.
   authRepository.observarSesion().listen((Sesion? sesion) {
@@ -140,6 +154,16 @@ Future<void> main() async {
         RepositoryProvider<SatisfaccionRepository>(
           create: (_) => SatisfaccionRepositoryImpl(client),
         ),
+        RepositoryProvider<CalidadRepository>(
+          create: (_) => CalidadRepositoryImpl(client),
+        ),
+        RepositoryProvider<CombustibleRepository>(
+          create: (_) =>
+              CombustibleRepositoryImpl(CombustibleRemoteDataSource(client)),
+        ),
+        RepositoryProvider<EsperaRepository>(
+          create: (_) => EsperaRepositoryImpl(EsperaRemoteDataSource(client)),
+        ),
         RepositoryProvider<TarifaCombustibleRepository>(
           create: (_) => TarifaCombustibleRepositoryImpl(
             TarifaCombustibleRemoteDataSource(client),
@@ -147,6 +171,9 @@ Future<void> main() async {
         ),
         RepositoryProvider<UbicacionViajeRepository>.value(
           value: ubicacionViajeRepository,
+        ),
+        RepositoryProvider<PausaActivaRepository>.value(
+          value: pausaActivaRepository,
         ),
         RepositoryProvider<MonitorRutaRegistro>.value(value: monitorRegistro),
         RepositoryProvider<ViajeRepository>.value(value: viajeRepository),

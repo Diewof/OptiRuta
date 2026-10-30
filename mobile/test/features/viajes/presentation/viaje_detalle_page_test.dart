@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:optiruta/features/calidad/domain/repositories/calidad_repository.dart';
 import 'package:optiruta/features/checklist/domain/repositories/checklist_repository.dart';
 import 'package:optiruta/features/satisfaccion/domain/repositories/satisfaccion_repository.dart';
 import 'package:optiruta/core/error/catalogo_failure.dart';
@@ -37,6 +38,8 @@ class _MockRenta extends Mock implements RentabilidadRepository {}
 class _MockAjuste extends Mock implements AjusteViajeRepository {}
 
 class _MockSatisfaccion extends Mock implements SatisfaccionRepository {}
+
+class _MockCalidad extends Mock implements CalidadRepository {}
 
 ViajeResumen _viaje(EstadoViaje e) => ViajeResumen(
   id: 'v-1',
@@ -98,6 +101,7 @@ void main() {
   late _MockRenta rentaRepo;
   late _MockAjuste ajusteRepo;
   late _MockSatisfaccion satisfaccionRepo;
+  late _MockCalidad calidadRepo;
   late List<AjusteViaje> ajustes;
 
   setUp(() {
@@ -109,6 +113,8 @@ void main() {
     satisfaccionRepo = _MockSatisfaccion();
     when(() => satisfaccionRepo.encuestaDeViaje(any()))
         .thenAnswer((_) async => null);
+    calidadRepo = _MockCalidad();
+    when(() => calidadRepo.calidadDeViaje(any())).thenAnswer((_) async => null);
     ajustes = <AjusteViaje>[];
 
     when(() => hitoRepo.listarPorViaje('v-1')).thenAnswer(
@@ -155,6 +161,7 @@ void main() {
           RepositoryProvider<SatisfaccionRepository>.value(
             value: satisfaccionRepo,
           ),
+          RepositoryProvider<CalidadRepository>.value(value: calidadRepo),
           RepositoryProvider<ChecklistRepository>.value(
             value: const SinChecklistRepository(),
           ),
@@ -173,24 +180,29 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  Future<void> irAPestana(WidgetTester tester, String titulo) async {
+    await tester.tap(find.widgetWithText(Tab, titulo));
+    await tester.pumpAndSettle();
+  }
+
   testWidgets('muestra la rentabilidad marginal sin mantenimiento ni sueldo', (
     WidgetTester tester,
   ) async {
     await montar(tester, EstadoViaje.finalizado);
 
     expect(find.text('Viaje REM-9'), findsOneWidget);
-    expect(find.text('Rentabilidad del viaje · marginal'), findsOneWidget);
+    expect(find.text('Ganancia del viaje · sin costos fijos'), findsOneWidget);
     expect(find.text(r'$ 5,41 M'), findsOneWidget);
     expect(find.text('Margen 55,2 %'), findsOneWidget);
-    expect(
-      find.text('Parcial'),
-      findsNWidgets(2),
-    ); // chip de base + leyenda (peaje estimado)
+    expect(find.text('Parcial'), findsOneWidget); // chip de base
+
+    await irAPestana(tester, 'Costos');
+    expect(find.text('Parcial'), findsOneWidget); // leyenda (peaje estimado)
     // El flete es un valor pactado, no un par estimado/real.
     expect(find.text('Pactado'), findsOneWidget);
     // El mantenimiento amortizado no aparece en el desglose del viaje.
     expect(find.text('Mantenimiento amortizado'), findsNothing);
-    expect(find.text('GoPass · esperando'), findsOneWidget);
+    expect(find.text('Peaje · pendiente del correo'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -199,6 +211,7 @@ void main() {
   ) async {
     await montar(tester, EstadoViaje.finalizado, escala: 1.3);
 
+    await irAPestana(tester, 'Costos');
     expect(find.text('Estimado vs. real'), findsOneWidget);
     expect(find.text('Estimado'), findsWidgets); // rótulos de la fila apilada
     expect(tester.takeException(), isNull);
@@ -255,8 +268,7 @@ void main() {
       () => ajusteRepo.registrar(
         viajeId: any(named: 'viajeId'),
         motivo: any(named: 'motivo'),
-        campoModificado: any(named: 'campoModificado'),
-        valorAnterior: any(named: 'valorAnterior'),
+        concepto: any(named: 'concepto'),
         valorNuevo: any(named: 'valorNuevo'),
       ),
     ).thenAnswer((Invocation i) async {
@@ -265,9 +277,11 @@ void main() {
         viajeId: 'v-1',
         motivo: i.namedArguments[#motivo] as String,
         fecha: DateTime(2026, 10, 8, 15),
-        campoModificado: i.namedArguments[#campoModificado] as String?,
-        valorAnterior: i.namedArguments[#valorAnterior] as String?,
-        valorNuevo: i.namedArguments[#valorNuevo] as String?,
+        campoModificado: 'Flete pactado',
+        valorAnterior: r'$ 5.000.000',
+        valorNuevo: r'$ 3.300.000',
+        concepto: i.namedArguments[#concepto] as String?,
+        monto: -1700000,
       );
       ajustes = <AjusteViaje>[a];
       return a;
@@ -300,15 +314,14 @@ void main() {
       () => ajusteRepo.registrar(
         viajeId: 'v-1',
         motivo: 'El recibo llegó con otro valor',
-        campoModificado: 'ACPM',
-        valorAnterior: r'$3.210.000',
-        valorNuevo: '3300000',
+        concepto: 'FLETE',
+        valorNuevo: 3300000,
       ),
     ).called(1);
-    await tester.scrollUntilVisible(find.text('Ajustes registrados'), 300);
+    await irAPestana(tester, 'Tiempos');
     expect(find.text('Ajustes registrados'), findsOneWidget);
     expect(find.textContaining('recibo llegó con otro valor'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Ajustada'), -300);
+    await irAPestana(tester, 'Resumen');
     expect(find.text('Ajustada'), findsOneWidget);
   });
 
@@ -319,5 +332,54 @@ void main() {
 
     expect(find.text('Cerrar viaje'), findsNothing);
     expect(find.text('Registrar ajuste'), findsNothing);
+  });
+
+  testWidgets('la nota de qué incluye la ganancia vive en un enlace', (
+    WidgetTester tester,
+  ) async {
+    await montar(tester, EstadoViaje.finalizado);
+
+    // Ya no ocupa una tarjeta fija en cada visita.
+    expect(find.text('Esto es la rentabilidad del viaje'), findsNothing);
+
+    await tester.tap(find.text('Qué incluye'));
+    await tester.pumpAndSettle();
+    expect(find.text('Qué incluye esta ganancia'), findsOneWidget);
+    expect(find.textContaining('rentabilidad del mes'), findsOneWidget);
+
+    await tester.tap(find.text('Entendido'));
+    await tester.pumpAndSettle();
+    expect(find.text('Qué incluye esta ganancia'), findsNothing);
+  });
+
+  testWidgets('los costos se corrigen y se suman desde la propia tabla', (
+    WidgetTester tester,
+  ) async {
+    await montar(tester, EstadoViaje.finalizado);
+    await irAPestana(tester, 'Costos');
+
+    expect(
+      find.text('Toca un costo para corregir su estimado.'),
+      findsOneWidget,
+    );
+    expect(find.text('Agregar costo'), findsOneWidget);
+    // Ya no hay una tarjeta aparte que repita cada costo.
+    expect(find.text('Administrar costos'), findsNothing);
+  });
+
+  testWidgets('las pestañas separan resumen, costos, tiempos y calidad', (
+    WidgetTester tester,
+  ) async {
+    await montar(tester, EstadoViaje.finalizado);
+
+    for (final String t in <String>[
+      'Resumen',
+      'Costos',
+      'Tiempos',
+      'Calidad',
+    ]) {
+      expect(find.widgetWithText(Tab, t), findsOneWidget);
+    }
+    expect(find.text('Estimado vs. real'), findsNothing); // vive en Costos
   });
 }

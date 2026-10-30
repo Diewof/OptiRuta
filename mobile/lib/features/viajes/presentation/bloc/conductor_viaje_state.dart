@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 
 import '../../../checklist/domain/entities/checklist.dart';
 import '../../domain/entities/costo_viaje.dart';
+import '../../domain/entities/descargue_pendiente.dart';
 import '../../domain/entities/hito.dart';
 import '../../domain/entities/viaje_resumen.dart';
 
@@ -26,9 +27,26 @@ class ConductorViajeError extends ConductorViajeState {
 }
 
 /// Sin viaje ASIGNADO/EN_CURSO para el conductor autenticado (RLS ya filtra
-/// a sus propios viajes).
+/// a sus propios viajes). Si acaba de llegar a destino y aún no registró la
+/// salida del descargue, [descarguePendiente] lo ofrece en Inicio.
 class ConductorViajeSinAsignar extends ConductorViajeState {
-  const ConductorViajeSinAsignar();
+  const ConductorViajeSinAsignar({
+    this.descarguePendiente,
+    this.procesando = false,
+  });
+
+  final DescarguePendiente? descarguePendiente;
+  final bool procesando;
+
+  ConductorViajeSinAsignar copiarCon({bool? procesando}) {
+    return ConductorViajeSinAsignar(
+      descarguePendiente: descarguePendiente,
+      procesando: procesando ?? this.procesando,
+    );
+  }
+
+  @override
+  List<Object?> get props => <Object?>[descarguePendiente, procesando];
 }
 
 class ConductorViajeListo extends ConductorViajeState {
@@ -41,6 +59,7 @@ class ConductorViajeListo extends ConductorViajeState {
   });
 
   final ViajeResumen viaje;
+
   final List<Hito> hitos;
   final List<CostoViaje> costos;
 

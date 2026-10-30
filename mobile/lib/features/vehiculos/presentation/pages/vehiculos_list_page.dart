@@ -1,3 +1,7 @@
+import '../widgets/estado_vehiculo_chip.dart';
+import '../../../../core/utils/busqueda_utils.dart';
+import '../../../../core/widgets/campo_busqueda.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -150,6 +154,7 @@ class _ListaVehiculos extends StatefulWidget {
 
 class _ListaVehiculosState extends State<_ListaVehiculos> {
   final ScrollController _scroll = ScrollController();
+  String _consulta = '';
 
   @override
   void initState() {
@@ -173,7 +178,12 @@ class _ListaVehiculosState extends State<_ListaVehiculos> {
   @override
   Widget build(BuildContext context) {
     final VehiculoListListo state = widget.state;
-    return RefreshIndicator(
+    final List<Vehiculo> items = filtrarPorTexto<Vehiculo>(
+      state.vehiculos,
+      _consulta,
+      (Vehiculo c) => <String?>[c.placa, c.tipo.etiqueta],
+    );
+    final Widget lista = RefreshIndicator(
       onRefresh: () => context.read<VehiculoListCubit>().recargar(),
       child: ListView.separated(
         controller: _scroll,
@@ -183,18 +193,27 @@ class _ListaVehiculosState extends State<_ListaVehiculos> {
           AppSpacing.x4,
           96,
         ),
-        itemCount: state.vehiculos.length + (state.hayMas ? 1 : 0),
+        itemCount: items.length + (state.hayMas ? 1 : 0),
         separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.x2),
         itemBuilder: (BuildContext context, int i) {
-          if (i >= state.vehiculos.length) {
+          if (i >= items.length) {
             return const Padding(
               padding: EdgeInsets.symmetric(vertical: AppSpacing.x4),
               child: Center(child: CircularProgressIndicator()),
             );
           }
-          return _VehiculoCard(vehiculo: state.vehiculos[i]);
+          return _VehiculoCard(vehiculo: items[i]);
         },
       ),
+    );
+    return Column(
+      children: <Widget>[
+        CampoBusqueda(
+          etiqueta: 'Buscar vehículo',
+          alCambiar: (String t) => setState(() => _consulta = t),
+        ),
+        Expanded(child: lista),
+      ],
     );
   }
 }
@@ -297,6 +316,8 @@ class _VehiculoCard extends StatelessWidget {
                       fontFeatures: AppTypography.tabular,
                     ),
                   ),
+                  if (vehiculo.activo)
+                    EstadoVehiculoChip(vehiculoId: vehiculo.id),
                 ],
               ),
             ),

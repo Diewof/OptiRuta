@@ -4,7 +4,8 @@ import 'package:equatable/equatable.dart';
 enum DimensionMetrica {
   ruta('RUTA', 'Ruta'),
   cliente('CLIENTE', 'Cliente'),
-  conductor('CONDUCTOR', 'Conductor');
+  conductor('CONDUCTOR', 'Conductor'),
+  placa('PLACA', 'Placa');
 
   const DimensionMetrica(this.codigo, this.etiqueta);
 
@@ -55,8 +56,8 @@ class MetricasPeriodo extends Equatable {
   ];
 }
 
-/// Una fila de `metricas_por_dimension`: el rendimiento de una ruta, un
-/// cliente o un conductor en el período.
+/// Una fila de `metricas_por_dimension_v3`: el rendimiento de una ruta, un
+/// cliente, un conductor o una placa en el período.
 class MetricaDimension extends Equatable {
   const MetricaDimension({
     required this.clave,
@@ -67,6 +68,9 @@ class MetricaDimension extends Equatable {
     required this.kmTotal,
     required this.viajesATiempo,
     required this.viajesMedidos,
+    this.margenPromedio = 0,
+    this.margenPct,
+    this.bajoMargen = false,
   });
 
   final String clave;
@@ -77,6 +81,13 @@ class MetricaDimension extends Equatable {
   final double kmTotal;
   final int viajesATiempo;
   final int viajesMedidos;
+
+  /// Rentabilidad media por viaje y margen sobre el flete (nulo sin flete).
+  final double margenPromedio;
+  final double? margenPct;
+
+  /// El servidor marca las filas con margen negativo o bajo el mínimo.
+  final bool bajoMargen;
 
   double? get cumplimientoPct =>
       viajesMedidos == 0 ? null : viajesATiempo / viajesMedidos * 100;
@@ -91,5 +102,8 @@ class MetricaDimension extends Equatable {
     kmTotal,
     viajesATiempo,
     viajesMedidos,
+    margenPromedio,
+    margenPct,
+    bajoMargen,
   ];
 }

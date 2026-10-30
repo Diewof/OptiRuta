@@ -13,9 +13,7 @@ import '../../../../core/widgets/admin_scaffold.dart';
 import '../../../../core/widgets/admin_section.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/cifra_animada.dart';
-import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_state.dart';
-import '../../../../core/widgets/ilustracion_estado.dart';
 import '../../../../core/widgets/marca_icon.dart';
 import '../../../../core/widgets/semaforo_badge.dart';
 import '../../../../core/widgets/skeleton.dart';
@@ -24,13 +22,10 @@ import '../../../vehiculos/domain/repositories/vehiculo_repository.dart';
 import '../../../viajes/domain/entities/categoria_costo.dart';
 import '../../../viajes/domain/entities/rentabilidad_consolidada.dart';
 import '../widgets/color_costo.dart';
-import '../../../viajes/domain/entities/viaje_resumen.dart';
 import '../../../viajes/domain/repositories/rentabilidad_repository.dart';
 import '../../../viajes/domain/repositories/viaje_repository.dart';
 import '../../../viajes/domain/usecases/listar_viajes_activos_use_case.dart';
 import '../../../viajes/domain/usecases/rentabilidad_consolidada_use_case.dart';
-import '../../../viajes/presentation/pages/viaje_detalle_page.dart';
-import '../../../viajes/presentation/widgets/viaje_resumen_card.dart';
 import '../../../notificaciones/domain/repositories/notificacion_repository.dart';
 import '../../../notificaciones/domain/usecases/listar_notificaciones_use_case.dart';
 import '../../domain/repositories/metricas_repository.dart';
@@ -185,46 +180,11 @@ class _Contenido extends StatelessWidget {
           _PanelFiltros(estado: estado),
           const SizedBox(height: AppSpacing.x3),
           _HeroConsolidada(estado: estado),
-          if (estado.alertas.isNotEmpty) ...<Widget>[
-            const SizedBox(height: AppSpacing.x3),
-            AlertasActivasCard(alertas: estado.alertas),
-          ],
           const SizedBox(height: AppSpacing.x3),
           _KpisFlota(estado: estado),
           const SizedBox(height: AppSpacing.x3),
           MetricasOperativas(metricas: estado.metricas),
-          const SizedBox(height: AppSpacing.x4),
-          const Text('Viajes en curso', style: AppTypography.subtitle),
-          const SizedBox(height: AppSpacing.x2),
-          if (estado.viajesActivos.isEmpty)
-            const AppCard(
-              child: EmptyState(
-                icono: LucideIcons.truck,
-                ilustracion: IlustracionEstado.sinViaje,
-                titulo: 'Todavía no hay viajes en curso',
-                mensaje:
-                    'Cuando un conductor salga, verás aquí cómo va el viaje.',
-              ),
-            )
-          else
-            for (final ViajeResumen v in estado.viajesActivos) ...<Widget>[
-              ViajeResumenCard(
-                viaje: v,
-                onTap: () {
-                  final AnaliticaCubit cubit = context.read<AnaliticaCubit>();
-                  Navigator.of(context)
-                      .push<void>(
-                        MaterialPageRoute<void>(
-                          builder: (_) =>
-                              ViajeDetallePage(viaje: v, puedeCerrar: true),
-                        ),
-                      )
-                      .then((_) => cubit.recargar());
-                },
-              ),
-              const SizedBox(height: AppSpacing.x2),
-            ],
-          const SizedBox(height: AppSpacing.x2),
+          const SizedBox(height: AppSpacing.x3),
           RendimientoCard(rendimiento: estado.rendimiento),
           const SizedBox(height: AppSpacing.x3),
           _DesgloseCostos(rentabilidad: r, moneda: moneda),

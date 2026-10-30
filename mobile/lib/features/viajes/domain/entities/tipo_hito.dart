@@ -4,7 +4,11 @@ enum TipoHito {
   salida('SALIDA', 'Salida'),
   llegadaCargue('LLEGADA_CARGUE', 'Llegada a cargue'),
   salidaConCarga('SALIDA_CON_CARGA', 'Salida con carga'),
-  llegadaDestino('LLEGADA_DESTINO', 'Llegada a destino');
+  llegadaDestino('LLEGADA_DESTINO', 'Llegada a destino'),
+
+  /// Opcional y posterior a la llegada: se registra con el viaje ya
+  /// FINALIZADO y sirve para medir la espera de descargue.
+  salidaDescargue('SALIDA_DESCARGUE', 'Salida del descargue');
 
   const TipoHito(this.codigo, this.etiqueta);
 
@@ -17,6 +21,7 @@ enum TipoHito {
       'LLEGADA_CARGUE' => TipoHito.llegadaCargue,
       'SALIDA_CON_CARGA' => TipoHito.salidaConCarga,
       'LLEGADA_DESTINO' => TipoHito.llegadaDestino,
+      'SALIDA_DESCARGUE' => TipoHito.salidaDescargue,
       _ => throw ArgumentError.value(valor, 'valor', 'Tipo de hito no válido'),
     };
   }

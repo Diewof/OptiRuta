@@ -1,3 +1,6 @@
+import '../../../../core/utils/busqueda_utils.dart';
+import '../../../../core/widgets/campo_busqueda.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -14,6 +17,9 @@ import '../../../../core/widgets/error_state.dart';
 import '../../../../core/widgets/skeleton.dart';
 import '../../../../core/widgets/status_badge.dart';
 import '../../../autenticacion/domain/entities/usuario.dart';
+import '../../../calidad/domain/repositories/calidad_repository.dart';
+import '../../../calidad/domain/usecases/calidad_use_cases.dart';
+import '../../../calidad/presentation/widgets/calidad_conductor_indicador.dart';
 import '../../domain/entities/conductor.dart';
 import '../../domain/repositories/conductor_repository.dart';
 import '../../domain/usecases/inhabilitar_conductor_use_case.dart';
@@ -126,6 +132,7 @@ class _ListaConductores extends StatefulWidget {
 
 class _ListaConductoresState extends State<_ListaConductores> {
   final ScrollController _scroll = ScrollController();
+  String _consulta = '';
 
   @override
   void initState() {
@@ -149,23 +156,37 @@ class _ListaConductoresState extends State<_ListaConductores> {
   @override
   Widget build(BuildContext context) {
     final ConductorListListo state = widget.state;
-    return RefreshIndicator(
+    final List<Conductor> items = filtrarPorTexto<Conductor>(
+      state.conductores,
+      _consulta,
+      (Conductor c) => <String?>[c.nombre, c.documento, c.licencia],
+    );
+    final Widget lista = RefreshIndicator(
       onRefresh: () => context.read<ConductorListCubit>().recargar(),
       child: ListView.separated(
         controller: _scroll,
         padding: const EdgeInsets.all(AppSpacing.x4),
-        itemCount: state.conductores.length + (state.hayMas ? 1 : 0),
+        itemCount: items.length + (state.hayMas ? 1 : 0),
         separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.x2),
         itemBuilder: (BuildContext context, int i) {
-          if (i >= state.conductores.length) {
+          if (i >= items.length) {
             return const Padding(
               padding: EdgeInsets.symmetric(vertical: AppSpacing.x4),
               child: Center(child: CircularProgressIndicator()),
             );
           }
-          return _ConductorCard(conductor: state.conductores[i]);
+          return _ConductorCard(conductor: items[i]);
         },
       ),
+    );
+    return Column(
+      children: <Widget>[
+        CampoBusqueda(
+          etiqueta: 'Buscar conductor',
+          alCambiar: (String t) => setState(() => _consulta = t),
+        ),
+        Expanded(child: lista),
+      ],
     );
   }
 }
@@ -265,6 +286,12 @@ class _ConductorCard extends StatelessWidget {
                 const SizedBox(height: AppSpacing.x1),
                 _EstadoLicencia(
                   vencimiento: conductor.fechaVencimientoLicencia,
+                ),
+                CalidadConductorIndicador(
+                  conductorId: conductor.id,
+                  obtener: ObtenerCalidadDeConductorUseCase(
+                    context.read<CalidadRepository>(),
+                  ),
                 ),
               ],
             ),

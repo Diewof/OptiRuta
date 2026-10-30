@@ -113,12 +113,12 @@ class ViajeDetalleCubit extends Cubit<ViajeDetalleState> {
   }
 
   /// Registra un ajuste sobre un viaje cerrado. El motivo es obligatorio
-  /// (también lo exige la RPC). No cambia los costos: queda en el registro.
+  /// (también lo exige la RPC). El servidor calcula la diferencia contra el
+  /// valor vigente y la rentabilidad del viaje la incluye.
   Future<void> registrarAjuste({
     required String motivo,
-    String? campoModificado,
-    String? valorAnterior,
-    String? valorNuevo,
+    required String concepto,
+    required double valorNuevo,
   }) async {
     final ViajeDetalleState actual = state;
     if (actual is! ViajeDetalleListo || actual.procesando) return;
@@ -127,8 +127,7 @@ class ViajeDetalleCubit extends Cubit<ViajeDetalleState> {
       await _registrarAjuste(
         viajeId: _viaje.id,
         motivo: motivo,
-        campoModificado: campoModificado,
-        valorAnterior: valorAnterior,
+        concepto: concepto,
         valorNuevo: valorNuevo,
       );
       await cargar(silencioso: true);

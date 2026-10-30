@@ -1,4 +1,5 @@
 import '../../../../core/error/catalogo_failure.dart';
+import '../../domain/entities/descargue_pendiente.dart';
 import '../../domain/entities/hito.dart';
 import '../../domain/entities/tipo_hito.dart';
 import '../../domain/repositories/hito_repository.dart';
@@ -33,6 +34,22 @@ class HitoRepositoryImpl implements HitoRepository {
         fechaHora: fechaHora,
       );
       return HitoModel.aEntidad(fila);
+    });
+  }
+
+  @override
+  Future<DescarguePendiente?> descarguePendiente() {
+    return ejecutarCatalogo(() async {
+      final List<Map<String, dynamic>> filas = await _remote
+          .descarguePendiente();
+      if (filas.isEmpty) return null;
+      final Map<String, dynamic> f = filas.first;
+      return DescarguePendiente(
+        viajeId: f['viaje_id'] as String,
+        destino: f['destino'] as String,
+        cliente: f['cliente'] as String,
+        llegada: DateTime.parse(f['llegada'] as String).toLocal(),
+      );
     });
   }
 }

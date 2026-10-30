@@ -34,6 +34,15 @@ values ('11111111-0000-0000-0000-0000000000cb', 'BRC001', 'DOBLE_TROQUE', 17, 9,
 insert into public.conductor (id, usuario_id, licencia, fecha_vencimiento_licencia, tipo_pago, porcentaje_comision, sueldo_base, activo)
 values ('22222222-0000-0000-0000-0000000000cb', 'c0000000-0000-0000-0000-0000000000cb', 'LIC-BRC-001', date '2030-01-01', 'COMISION', 10, 0, true);
 
+-- Segundo conductor (libre) para crear viajes: el primero ya tiene viajes en curso.
+insert into auth.users (instance_id, id, aud, role, email, raw_user_meta_data, created_at, updated_at)
+values ('00000000-0000-0000-0000-000000000000', 'c0000000-0000-0000-0000-0000000000cc',
+   'authenticated', 'authenticated', 'conductor2.brechas@optiruta.test', '{"nombre":"Conductor Brechas 2"}', now(), now());
+update auth.users set raw_app_meta_data = raw_app_meta_data || jsonb_build_object('rol', 'CONDUCTOR')
+ where id = 'c0000000-0000-0000-0000-0000000000cc';
+insert into public.conductor (id, usuario_id, licencia, fecha_vencimiento_licencia, tipo_pago, porcentaje_comision, sueldo_base, activo)
+values ('22222222-0000-0000-0000-0000000000cc', 'c0000000-0000-0000-0000-0000000000cc', 'LIC-BRC-002', date '2030-01-01', 'COMISION', 10, 0, true);
+
 insert into public.cliente (id, nombre)
 values ('33333333-0000-0000-0000-0000000000cb', 'Cliente Brechas');
 
@@ -139,7 +148,7 @@ select throws_ok(
 select lives_ok(
   $$ select public.viaje_crear(
        'BRC-REM-003', '11111111-0000-0000-0000-0000000000cd',
-       '22222222-0000-0000-0000-0000000000cb', '33333333-0000-0000-0000-0000000000cb',
+       '22222222-0000-0000-0000-0000000000cc', '33333333-0000-0000-0000-0000000000cb',
        'Ciudad Sin Tarifa', 'Bogota', now(), 300, 400, 20, 2000000
      ) $$,
   'RF-11: viaje_crear no falla cuando no hay tarifa de ACPM'

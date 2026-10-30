@@ -152,7 +152,7 @@ void main() {
             .having(
               (SatisfaccionListo s) => s.porDimension.keys.toSet(),
               'dimensiones',
-              DimensionMetrica.values.toSet(),
+              dimensionesSatisfaccion.toSet(),
             ),
       ],
     );

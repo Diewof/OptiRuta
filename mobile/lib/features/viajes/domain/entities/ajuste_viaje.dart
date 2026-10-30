@@ -1,8 +1,9 @@
 import 'package:equatable/equatable.dart';
 
 /// Ajuste registrado sobre un viaje CERRADO (tabla append-only
-/// `ajuste_viaje`). Es un registro auditable con motivo obligatorio: no
-/// modifica los costos del viaje, que quedan congelados al cerrarlo.
+/// `ajuste_viaje`), con motivo obligatorio. El flete y los costos originales
+/// quedan congelados; el ajuste suma [monto] (diferencia firmada) al
+/// [concepto] (`FLETE` o una categoría de costo) en la rentabilidad.
 class AjusteViaje extends Equatable {
   const AjusteViaje({
     required this.id,
@@ -12,6 +13,8 @@ class AjusteViaje extends Equatable {
     this.campoModificado,
     this.valorAnterior,
     this.valorNuevo,
+    this.concepto,
+    this.monto,
   });
 
   final String id;
@@ -22,6 +25,10 @@ class AjusteViaje extends Equatable {
   final String? valorAnterior;
   final String? valorNuevo;
 
+  /// Nulos en los ajustes antiguos, que eran solo informativos.
+  final String? concepto;
+  final double? monto;
+
   @override
   List<Object?> get props => <Object?>[
     id,
@@ -31,5 +38,7 @@ class AjusteViaje extends Equatable {
     campoModificado,
     valorAnterior,
     valorNuevo,
+    concepto,
+    monto,
   ];
 }

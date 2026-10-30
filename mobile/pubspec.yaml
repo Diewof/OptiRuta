@@ -69,6 +69,10 @@ dependencies:
   # `printing` abre el diálogo del sistema para guardarlo o compartirlo.
   pdf: ^3.13.1
   printing: ^5.15.1
+  # Aviso de pausa activa: vibración con patrón y sonido propio. HapticFeedback y
+  # SystemSound de Flutter no vibran/suenan de forma fiable en todos los Android.
+  vibration: ^3.2.1
+  audioplayers: ^6.8.1
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -113,6 +117,7 @@ flutter:
     - assets/illustrations/
     - assets/icons/
     - assets/vehiculos/
+    - assets/sounds/
 
   fonts:
     - family: Inter

@@ -7,6 +7,8 @@ import 'package:mocktail/mocktail.dart';
 import 'package:optiruta/features/checklist/domain/repositories/checklist_repository.dart';
 import 'package:optiruta/features/clientes/domain/repositories/cliente_repository.dart';
 import 'package:optiruta/features/conductores/domain/repositories/conductor_repository.dart';
+import 'package:optiruta/features/combustible/domain/repositories/combustible_repository.dart';
+import 'package:optiruta/features/viajes/domain/repositories/pausa_activa_repository.dart';
 import 'package:optiruta/features/viajes/domain/repositories/ubicacion_viaje_repository.dart';
 import 'package:optiruta/features/viajes/presentation/bloc/monitor_ruta_registro.dart';
 import 'package:optiruta/features/autenticacion/domain/entities/rol_usuario.dart';
@@ -51,6 +53,9 @@ class _MockNotificacionRepository extends Mock
 
 class _MockHitoRepository extends Mock implements HitoRepository {}
 
+class _MockCombustibleRepository extends Mock
+    implements CombustibleRepository {}
+
 class _MockCostoViajeRepository extends Mock implements CostoViajeRepository {}
 
 const Usuario _admin = Usuario(
@@ -68,6 +73,9 @@ const Usuario _conductor = Usuario(
 );
 
 class _MockServicioUbicacion extends Mock implements ServicioUbicacion {}
+
+class _MockPausaActivaRepository extends Mock
+    implements PausaActivaRepository {}
 
 class _MockUbicacionViajeRepository extends Mock
     implements UbicacionViajeRepository {}
@@ -198,9 +206,13 @@ void main() {
               ubicacion: _MockServicioUbicacion(),
               viajes: viajeRepo,
               ubicaciones: _MockUbicacionViajeRepository(),
+              pausaActiva: _MockPausaActivaRepository(),
             ),
           ),
           RepositoryProvider<HitoRepository>.value(value: hitoRepo),
+          RepositoryProvider<CombustibleRepository>.value(
+            value: _MockCombustibleRepository(),
+          ),
           RepositoryProvider<CostoViajeRepository>.value(value: costoViajeRepo),
           RepositoryProvider<ChecklistRepository>.value(
             value: const SinChecklistRepository(),

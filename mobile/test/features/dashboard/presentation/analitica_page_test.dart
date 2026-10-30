@@ -213,16 +213,16 @@ void main() {
     expect(find.text('Margen 37,3 %'), findsOneWidget);
     expect(find.text('46'), findsOneWidget); // viajes cerrados
     expect(find.text('Flota en ruta'), findsOneWidget);
-    expect(find.text('Viajes en curso'), findsNWidgets(2)); // KPI + sección
-    expect(find.text('Bogotá → Cali'), findsOneWidget);
+    // Los viajes en curso y las alertas viven ahora en Inicio.
+    expect(find.text('Viajes en curso'), findsOneWidget); // solo el KPI
+    expect(find.text('Bogotá → Cali'), findsNothing);
     expect(find.text('Desglose de costos'), findsOneWidget);
     // RF-24: costo por km; RF-26: alertas activas; RF-25: rendimiento.
     expect(find.text('Costo por km'), findsOneWidget);
     expect(find.text(r'$1.815'), findsOneWidget);
     expect(find.text('Cumplimiento'), findsOneWidget);
     expect(find.text('75,0 %'), findsOneWidget);
-    expect(find.text('1 alerta activa'), findsOneWidget);
-    expect(find.text('Desvío de ruta'), findsOneWidget);
+    expect(find.text('1 alerta activa'), findsNothing);
     expect(find.text('Medellín → Cali'), findsOneWidget);
   });
 }

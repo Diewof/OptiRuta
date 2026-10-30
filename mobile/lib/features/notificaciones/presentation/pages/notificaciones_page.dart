@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -8,7 +9,9 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/admin_scaffold.dart';
 import '../../../../core/widgets/admin_section.dart';
+import '../../../../core/widgets/admin_shell_scope.dart';
 import '../../../../core/widgets/app_card.dart';
+import '../../../../core/widgets/chip_opcion.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_state.dart';
 import '../../../../core/widgets/loading_state.dart';
@@ -19,7 +22,7 @@ import '../../../viajes/domain/repositories/viaje_repository.dart';
 import '../../../viajes/domain/usecases/obtener_viaje_resumen_use_case.dart';
 import '../../../viajes/presentation/pages/viaje_detalle_page.dart';
 import '../../domain/entities/notificacion.dart';
-import '../../domain/entities/tipo_notificacion.dart';
+import '../widgets/destino_notificacion.dart';
 import '../widgets/tipo_notificacion_visual.dart';
 import '../../domain/repositories/notificacion_repository.dart';
 import '../../domain/usecases/listar_notificaciones_use_case.dart';
@@ -54,10 +57,44 @@ class NotificacionesPage extends StatelessWidget {
   }
 }
 
-class _NotificacionesView extends StatelessWidget {
+class _NotificacionesView extends StatefulWidget {
   const _NotificacionesView({required this.usuario});
 
   final Usuario usuario;
+
+  @override
+  State<_NotificacionesView> createState() => _NotificacionesViewState();
+}
+
+class _NotificacionesViewState extends State<_NotificacionesView> {
+  ValueListenable<AdminSection>? _seccion;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final ValueListenable<AdminSection>? nueva = AdminShellScope.maybeOf(
+      context,
+    )?.actual;
+    if (identical(nueva, _seccion)) return;
+    _seccion?.removeListener(_alCambiarSeccion);
+    _seccion = nueva;
+    nueva?.addListener(_alCambiarSeccion);
+  }
+
+  /// El shell la mantiene viva: al abrirla de nuevo se trae lo más reciente.
+  void _alCambiarSeccion() {
+    if (_seccion?.value == AdminSection.notificaciones) {
+      context.read<NotificacionListCubit>().recargar();
+    }
+  }
+
+  @override
+  void dispose() {
+    _seccion?.removeListener(_alCambiarSeccion);
+    super.dispose();
+  }
+
+  Usuario get usuario => widget.usuario;
 
   @override
   Widget build(BuildContext context) {
@@ -108,6 +145,7 @@ class _ListaNotificaciones extends StatefulWidget {
 
 class _ListaNotificacionesState extends State<_ListaNotificaciones> {
   final ScrollController _scroll = ScrollController();
+  FiltroNotificacion _filtro = FiltroNotificacion.todas;
 
   @override
   void initState() {
@@ -133,7 +171,10 @@ class _ListaNotificacionesState extends State<_ListaNotificaciones> {
 
   @override
   Widget build(BuildContext context) {
-    final List<_Grupo> grupos = _agrupar(widget.state.notificaciones);
+    final List<Notificacion> visibles = widget.state.notificaciones
+        .where(_filtro.acepta)
+        .toList();
+    final List<_Grupo> grupos = _agrupar(visibles);
 
     return RefreshIndicator(
       onRefresh: () => context.read<NotificacionListCubit>().recargar(),
@@ -141,6 +182,32 @@ class _ListaNotificacionesState extends State<_ListaNotificaciones> {
         controller: _scroll,
         padding: const EdgeInsets.all(AppSpacing.x4),
         children: <Widget>[
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: <Widget>[
+                for (final FiltroNotificacion f in FiltroNotificacion.values)
+                  Padding(
+                    padding: const EdgeInsets.only(right: AppSpacing.x2),
+                    child: ChipOpcion(
+                      etiqueta: f.etiqueta,
+                      seleccionado: f == _filtro,
+                      onTap: () => setState(() => _filtro = f),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          if (visibles.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: AppSpacing.x6),
+              child: Center(
+                child: Text(
+                  'No hay notificaciones con este filtro.',
+                  style: AppTypography.caption,
+                ),
+              ),
+            ),
           if (_hayNoLeidas)
             Align(
               alignment: Alignment.centerRight,
@@ -224,19 +291,28 @@ class _NotificacionCard extends StatelessWidget {
   (IconData, Color) get _iconoYColor =>
       (notificacion.tipo.icono, notificacion.tipo.color);
 
-  bool get _puedeAbrirViaje =>
-      (notificacion.tipo.esAlertaDeRuta ||
-          notificacion.tipo == TipoNotificacion.checklistFalla) &&
-      notificacion.viajeId != null;
+  DestinoNotificacion? get _destino => DestinoNotificacion.de(notificacion);
 
   Future<void> _alTocar(BuildContext context) async {
     final NotificacionListCubit cubit = context.read<NotificacionListCubit>();
     final ViajeRepository viajes = context.read<ViajeRepository>();
     final NavigatorState navegador = Navigator.of(context);
     final ScaffoldMessengerState mensajes = ScaffoldMessenger.of(context);
+    final AdminShellScope? shell = AdminShellScope.maybeOf(context);
+    final DestinoNotificacion? destino = _destino;
 
     if (!notificacion.leida) cubit.marcarLeida(notificacion.id);
-    if (!_puedeAbrirViaje) return;
+    if (destino == null) return;
+
+    final AdminSection? seccion = destino.seccion;
+    if (!destino.abreViaje && seccion != null) {
+      if (shell != null) {
+        shell.irA(seccion);
+      } else {
+        navegador.pushNamed(seccion.ruta);
+      }
+      return;
+    }
 
     try {
       final ViajeResumen viaje = await ObtenerViajeResumenUseCase(viajes)(
@@ -273,7 +349,7 @@ class _NotificacionCard extends StatelessWidget {
       stripe: AppCardStripe.left,
       stripeColor: color,
       child: InkWell(
-        onTap: _puedeAbrirViaje || !notificacion.leida
+        onTap: _destino != null || !notificacion.leida
             ? () => _alTocar(context)
             : null,
         child: Row(
@@ -322,6 +398,15 @@ class _NotificacionCard extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSpacing.x1),
                   Text(notificacion.mensaje, style: AppTypography.body),
+                  if (_destino != null) ...<Widget>[
+                    const SizedBox(height: AppSpacing.x2),
+                    Text(
+                      '${_destino!.verbo} ›',
+                      style: AppTypography.label.copyWith(
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

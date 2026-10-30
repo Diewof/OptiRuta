@@ -2,9 +2,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/error/catalogo_failure.dart';
 import '../../../checklist/domain/entities/checklist.dart';
+import '../../../combustible/domain/usecases/combustible_use_cases.dart';
 import '../../../checklist/domain/usecases/checklist_use_cases.dart';
 import '../../domain/entities/costo_viaje.dart';
 import '../../domain/entities/coordenada.dart';
+import '../../domain/entities/descargue_pendiente.dart';
 import '../../domain/entities/hito.dart';
 import '../../domain/entities/tipo_hito.dart';
 import '../../domain/entities/estado_viaje.dart';
@@ -16,6 +18,7 @@ import '../../domain/usecases/iniciar_viaje_use_case.dart';
 import '../../domain/usecases/listar_costos_viaje_use_case.dart';
 import '../../domain/usecases/listar_hitos_use_case.dart';
 import '../../domain/usecases/listar_viajes_activos_use_case.dart';
+import '../../domain/usecases/obtener_descargue_pendiente_use_case.dart';
 import '../../domain/usecases/registrar_hito_use_case.dart';
 import 'conductor_viaje_state.dart';
 
@@ -39,6 +42,8 @@ class ConductorViajeCubit extends Cubit<ConductorViajeState> {
     required ActualizarValorRealCostoUseCase actualizarValorReal,
     required AgregarCostoViajeUseCase agregarCosto,
     required ObtenerChecklistViajeUseCase obtenerChecklist,
+    required ObtenerDescarguePendienteUseCase obtenerDescarguePendiente,
+    required RegistrarTanqueoUseCase registrarTanqueo,
   }) : _listarActivos = listarActivos,
        _listarHitos = listarHitos,
        _listarCostos = listarCostos,
@@ -48,6 +53,8 @@ class ConductorViajeCubit extends Cubit<ConductorViajeState> {
        _actualizarValorReal = actualizarValorReal,
        _agregarCosto = agregarCosto,
        _obtenerChecklist = obtenerChecklist,
+       _obtenerDescarguePendiente = obtenerDescarguePendiente,
+       _registrarTanqueo = registrarTanqueo,
        super(const ConductorViajeCargando()) {
     cargar();
   }
@@ -61,6 +68,8 @@ class ConductorViajeCubit extends Cubit<ConductorViajeState> {
   final ActualizarValorRealCostoUseCase _actualizarValorReal;
   final AgregarCostoViajeUseCase _agregarCosto;
   final ObtenerChecklistViajeUseCase _obtenerChecklist;
+  final ObtenerDescarguePendienteUseCase _obtenerDescarguePendiente;
+  final RegistrarTanqueoUseCase _registrarTanqueo;
 
   /// Con [silencioso] no pasa por «Cargando»: la pantalla conserva lo que ya
   /// muestra y solo cambia lo nuevo (así se pueden animar los cambios).
@@ -69,7 +78,11 @@ class ConductorViajeCubit extends Cubit<ConductorViajeState> {
     try {
       final List<ViajeResumen> viajes = await _listarActivos();
       if (viajes.isEmpty) {
-        emit(const ConductorViajeSinAsignar());
+        emit(
+          ConductorViajeSinAsignar(
+            descarguePendiente: await _descarguePendiente(),
+          ),
+        );
         return;
       }
       final ViajeResumen viaje = viajes.first;
@@ -85,6 +98,16 @@ class ConductorViajeCubit extends Cubit<ConductorViajeState> {
       );
     } on CatalogoFailure catch (falla) {
       emit(ConductorViajeError(falla.mensaje));
+    }
+  }
+
+  /// El descargue pendiente es un aviso accesorio: si no se puede consultar
+  /// se trata como «ninguno» y Inicio sigue como siempre.
+  Future<DescarguePendiente?> _descarguePendiente() async {
+    try {
+      return await _obtenerDescarguePendiente();
+    } on Object {
+      return null;
     }
   }
 
@@ -121,6 +144,49 @@ class ConductorViajeCubit extends Cubit<ConductorViajeState> {
           fechaHora: DateTime.now(),
         );
       }
+      await cargar(silencioso: true);
+    } on CatalogoFailure {
+      emit(actual.copiarCon(procesando: false));
+      rethrow;
+    }
+  }
+
+  /// Registra la salida del descargue del viaje que ya llegó a destino. Deja
+  /// que [CatalogoFailure] se propague para que la hoja la muestre.
+  Future<void> registrarSalidaDescargue() async {
+    final ConductorViajeState actual = state;
+    if (actual is! ConductorViajeSinAsignar || actual.procesando) return;
+    final DescarguePendiente? pendiente = actual.descarguePendiente;
+    if (pendiente == null) return;
+    emit(actual.copiarCon(procesando: true));
+    try {
+      await _registrarHito(
+        viajeId: pendiente.viajeId,
+        tipo: TipoHito.salidaDescargue,
+        fechaHora: DateTime.now(),
+      );
+      await cargar(silencioso: true);
+    } on CatalogoFailure {
+      emit(actual.copiarCon(procesando: false));
+      rethrow;
+    }
+  }
+
+  /// Anota un tanqueo del viaje en curso. El servidor suma el valor al ACPM
+  /// real. Relanza la falla para que la hoja la muestre.
+  Future<void> registrarTanqueo({
+    required double galones,
+    required double valor,
+  }) async {
+    final ConductorViajeState actual = state;
+    if (actual is! ConductorViajeListo || actual.procesando) return;
+    emit(actual.copiarCon(procesando: true));
+    try {
+      await _registrarTanqueo(
+        viajeId: actual.viaje.id,
+        galones: galones,
+        valor: valor,
+      );
       await cargar(silencioso: true);
     } on CatalogoFailure {
       emit(actual.copiarCon(procesando: false));

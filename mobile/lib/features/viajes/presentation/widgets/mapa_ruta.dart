@@ -138,6 +138,9 @@ class _MapaRutaState extends State<MapaRuta> {
   CameraFit get _encuadre => CameraFit.coordinates(
     coordinates: _trazado.map(aLatLng).toList(),
     padding: const EdgeInsets.all(AppSpacing.x8),
+    // Origen y destino casi iguales darían un zoom infinito (y un error de
+    // flutter_map): el encuadre nunca se acerca más que esto.
+    maxZoom: 15,
   );
 
   void _encuadrarRuta() {

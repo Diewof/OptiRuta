@@ -1,8 +1,8 @@
 import '../entities/ajuste_viaje.dart';
 
 /// Contrato sobre `ajuste_viaje`: lectura (RLS: administrador y conductor
-/// propietario) y registro por la RPC `viaje_registrar_ajuste` (solo
-/// administrador, motivo obligatorio). No hay UPDATE ni DELETE.
+/// propietario) y registro por la RPC `viaje_registrar_ajuste_v2` (solo
+/// administrador, viaje cerrado, motivo obligatorio). No hay UPDATE ni DELETE.
 abstract interface class AjusteViajeRepository {
   /// Más reciente primero.
   Future<List<AjusteViaje>> listarPorViaje(String viajeId);
@@ -10,8 +10,7 @@ abstract interface class AjusteViajeRepository {
   Future<AjusteViaje> registrar({
     required String viajeId,
     required String motivo,
-    String? campoModificado,
-    String? valorAnterior,
-    String? valorNuevo,
+    required String concepto,
+    required double valorNuevo,
   });
 }

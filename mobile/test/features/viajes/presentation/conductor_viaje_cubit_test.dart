@@ -1,7 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:optiruta/core/error/catalogo_failure.dart';
+import 'package:optiruta/features/combustible/domain/repositories/combustible_repository.dart';
+import 'package:optiruta/features/combustible/domain/usecases/combustible_use_cases.dart';
 import 'package:optiruta/features/viajes/domain/entities/categoria_costo.dart';
+import 'package:optiruta/features/viajes/domain/entities/descargue_pendiente.dart';
 import 'package:optiruta/features/viajes/domain/entities/coordenada.dart';
 import 'package:optiruta/features/viajes/domain/entities/costo_viaje.dart';
 import 'package:optiruta/features/viajes/domain/entities/estado_viaje.dart';
@@ -22,6 +25,7 @@ import 'package:optiruta/features/checklist/domain/usecases/checklist_use_cases.
 import 'package:optiruta/features/viajes/domain/usecases/listar_costos_viaje_use_case.dart';
 import 'package:optiruta/features/viajes/domain/usecases/listar_hitos_use_case.dart';
 import 'package:optiruta/features/viajes/domain/usecases/listar_viajes_activos_use_case.dart';
+import 'package:optiruta/features/viajes/domain/usecases/obtener_descargue_pendiente_use_case.dart';
 import 'package:optiruta/features/viajes/domain/usecases/registrar_hito_use_case.dart';
 import 'package:optiruta/features/viajes/presentation/bloc/conductor_viaje_cubit.dart';
 import 'package:optiruta/features/viajes/presentation/bloc/conductor_viaje_state.dart';
@@ -35,6 +39,9 @@ class _MockCostoViajeRepository extends Mock implements CostoViajeRepository {}
 class _MockServicioUbicacion extends Mock implements ServicioUbicacion {}
 
 class _MockChecklistRepository extends Mock implements ChecklistRepository {}
+
+class _MockCombustibleRepository extends Mock
+    implements CombustibleRepository {}
 
 const Coordenada _aqui = Coordenada(6.2442, -75.5812);
 
@@ -56,6 +63,7 @@ void main() {
   late _MockCostoViajeRepository costoRepo;
   late _MockServicioUbicacion ubicacion;
   late _MockChecklistRepository checklistRepo;
+  late _MockCombustibleRepository combustibleRepo;
 
   ConductorViajeCubit crear() => ConductorViajeCubit(
     listarActivos: ListarViajesActivosUseCase(viajeRepo),
@@ -67,6 +75,8 @@ void main() {
     actualizarValorReal: ActualizarValorRealCostoUseCase(costoRepo),
     agregarCosto: AgregarCostoViajeUseCase(costoRepo),
     obtenerChecklist: ObtenerChecklistViajeUseCase(checklistRepo),
+    obtenerDescarguePendiente: ObtenerDescarguePendienteUseCase(hitoRepo),
+    registrarTanqueo: RegistrarTanqueoUseCase(combustibleRepo),
   );
 
   setUp(() {
@@ -75,6 +85,7 @@ void main() {
     costoRepo = _MockCostoViajeRepository();
     ubicacion = _MockServicioUbicacion();
     checklistRepo = _MockChecklistRepository();
+    combustibleRepo = _MockCombustibleRepository();
     registerFallbackValue(_aqui);
     registerFallbackValue(DateTime(2026));
     registerFallbackValue(TipoHito.salida);
@@ -211,6 +222,147 @@ void main() {
 
     expect(emitidos.whereType<ConductorViajeCargando>(), isEmpty);
     expect(emitidos.last, isA<ConductorViajeListo>());
+  });
+
+  group('informes de negocio', () {
+    final DescarguePendiente pendiente = DescarguePendiente(
+      viajeId: 'v-9',
+      destino: 'Bogotá',
+      cliente: 'Distribuidora Andina',
+      llegada: DateTime(2026, 10, 27, 10),
+    );
+
+    test('sin viaje activo ofrece el descargue pendiente', () async {
+      when(() => viajeRepo.listarActivos()).thenAnswer((_) async => []);
+      when(() => hitoRepo.descarguePendiente())
+          .thenAnswer((_) async => pendiente);
+
+      final cubit = crear();
+      addTearDown(cubit.close);
+      await Future<void>.delayed(Duration.zero);
+
+      final ConductorViajeSinAsignar estado =
+          cubit.state as ConductorViajeSinAsignar;
+      expect(estado.descarguePendiente, pendiente);
+    });
+
+    test(
+      'si no se puede consultar el descargue, Inicio sigue sin él',
+      () async {
+        when(() => viajeRepo.listarActivos()).thenAnswer((_) async => []);
+        when(() => hitoRepo.descarguePendiente())
+            .thenThrow(CatalogoFailure.sinConexion());
+
+        final cubit = crear();
+        addTearDown(cubit.close);
+        await Future<void>.delayed(Duration.zero);
+
+        final ConductorViajeSinAsignar estado =
+            cubit.state as ConductorViajeSinAsignar;
+        expect(estado.descarguePendiente, isNull);
+      },
+    );
+
+    test('registrarSalidaDescargue registra el hito del viaje finalizado y '
+        'recarga', () async {
+      when(() => viajeRepo.listarActivos()).thenAnswer((_) async => []);
+      var consultas = 0;
+      when(() => hitoRepo.descarguePendiente())
+          .thenAnswer((_) async => consultas++ == 0 ? pendiente : null);
+      when(
+        () => hitoRepo.registrar(
+          viajeId: 'v-9',
+          tipo: TipoHito.salidaDescargue,
+          fechaHora: any(named: 'fechaHora'),
+        ),
+      ).thenAnswer(
+        (_) async => Hito(
+          id: 'h-9',
+          viajeId: 'v-9',
+          tipo: TipoHito.salidaDescargue,
+          fechaHora: DateTime.now(),
+        ),
+      );
+
+      final cubit = crear();
+      addTearDown(cubit.close);
+      await Future<void>.delayed(Duration.zero);
+
+      await cubit.registrarSalidaDescargue();
+
+      verify(
+        () => hitoRepo.registrar(
+          viajeId: 'v-9',
+          tipo: TipoHito.salidaDescargue,
+          fechaHora: any(named: 'fechaHora'),
+        ),
+      ).called(1);
+      final ConductorViajeSinAsignar estado =
+          cubit.state as ConductorViajeSinAsignar;
+      expect(estado.descarguePendiente, isNull);
+    });
+
+    test('registrarTanqueo envía galones y valor del viaje en curso', () async {
+      when(() => viajeRepo.listarActivos()).thenAnswer((_) async => [_viaje]);
+      when(() => hitoRepo.listarPorViaje('v-1'))
+          .thenAnswer((_) async => const <Hito>[]);
+      when(() => costoRepo.listarPorViaje('v-1'))
+          .thenAnswer((_) async => const <CostoViaje>[]);
+      when(
+        () => combustibleRepo.registrarTanqueo(
+          viajeId: 'v-1',
+          galones: 50,
+          valor: 600000,
+        ),
+      ).thenAnswer((_) async {});
+
+      final cubit = crear();
+      addTearDown(cubit.close);
+      await Future<void>.delayed(Duration.zero);
+
+      await cubit.registrarTanqueo(galones: 50, valor: 600000);
+
+      verify(
+        () => combustibleRepo.registrarTanqueo(
+          viajeId: 'v-1',
+          galones: 50,
+          valor: 600000,
+        ),
+      ).called(1);
+    });
+
+    test(
+      'registrarTanqueo propaga la falla del servidor y deja de procesar',
+      () async {
+        when(() => viajeRepo.listarActivos()).thenAnswer((_) async => [_viaje]);
+        when(() => hitoRepo.listarPorViaje('v-1'))
+            .thenAnswer((_) async => const <Hito>[]);
+        when(() => costoRepo.listarPorViaje('v-1'))
+            .thenAnswer((_) async => const <CostoViaje>[]);
+        when(
+          () => combustibleRepo.registrarTanqueo(
+            viajeId: 'v-1',
+            galones: 0,
+            valor: 1000,
+          ),
+        ).thenThrow(
+          const CatalogoFailure(
+            CatalogoErrorCodigo.desconocido,
+            'Los galones deben ser mayores que 0.',
+          ),
+        );
+
+        final cubit = crear();
+        addTearDown(cubit.close);
+        await Future<void>.delayed(Duration.zero);
+
+        await expectLater(
+          () => cubit.registrarTanqueo(galones: 0, valor: 1000),
+          throwsA(isA<CatalogoFailure>()),
+        );
+        expect((cubit.state as ConductorViajeListo).procesando, isFalse);
+      },
+    );
   });
 
   group('comenzar el viaje (salida)', () {

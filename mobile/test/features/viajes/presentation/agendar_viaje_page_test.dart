@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:optiruta/core/theme/app_theme.dart';
+import 'package:optiruta/core/widgets/app_text_field.dart';
 
 import 'package:optiruta/features/clientes/domain/entities/cliente.dart';
 import 'package:optiruta/features/clientes/domain/repositories/cliente_repository.dart';
@@ -11,6 +12,7 @@ import 'package:optiruta/features/conductores/domain/entities/tipo_pago.dart';
 import 'package:optiruta/features/conductores/domain/repositories/conductor_repository.dart';
 import 'package:optiruta/features/vehiculos/domain/entities/tipo_vehiculo.dart';
 import 'package:optiruta/features/vehiculos/domain/entities/vehiculo.dart';
+import 'package:optiruta/features/vehiculos/domain/repositories/hoja_vida_repository.dart';
 import 'package:optiruta/features/vehiculos/domain/repositories/vehiculo_repository.dart';
 import 'package:optiruta/features/viajes/domain/entities/coordenada.dart';
 import 'package:optiruta/features/viajes/domain/entities/lugar.dart';
@@ -26,6 +28,8 @@ class _MockVehiculoRepository extends Mock implements VehiculoRepository {}
 class _MockConductorRepository extends Mock implements ConductorRepository {}
 
 class _MockViajeRepository extends Mock implements ViajeRepository {}
+
+class _MockHojaVidaRepository extends Mock implements HojaVidaRepository {}
 
 class _MockRutaRepository extends Mock implements RutaRepository {}
 
@@ -145,6 +149,9 @@ void main() {
           RepositoryProvider<VehiculoRepository>.value(value: vehiculoRepo),
           RepositoryProvider<ConductorRepository>.value(value: conductorRepo),
           RepositoryProvider<ViajeRepository>.value(value: viajeRepo),
+          RepositoryProvider<HojaVidaRepository>.value(
+            value: _MockHojaVidaRepository(),
+          ),
           RepositoryProvider<RutaRepository>.value(value: rutaRepo),
         ],
         child: MaterialApp(
@@ -183,5 +190,127 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Distancia'), findsOneWidget);
     expect(find.text('1012 km'), findsOneWidget);
+  });
+
+  testWidgets('el asistente avanza por pasos y explica lo que falta', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(420, 1600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final clienteRepo = _MockClienteRepository();
+    final vehiculoRepo = _MockVehiculoRepository();
+    final conductorRepo = _MockConductorRepository();
+    final viajeRepo = _MockViajeRepository();
+    final rutaRepo = _MockRutaRepository();
+
+    when(() => clienteRepo.listar(pagina: 0, tamano: 100)).thenAnswer(
+      (_) async => const PaginaClientes(
+        clientes: <Cliente>[
+          Cliente(
+            id: 'cli-1',
+            nombre: 'Distribuidora Andina',
+            documento: null,
+            telefono: null,
+            correo: null,
+            direccion: null,
+            activo: true,
+          ),
+        ],
+        hayMas: false,
+      ),
+    );
+    when(() => vehiculoRepo.listar(pagina: 0, tamano: 100)).thenAnswer(
+      (_) async =>
+          const PaginaVehiculos(vehiculos: <Vehiculo>[], hayMas: false),
+    );
+    when(() => conductorRepo.listar(pagina: 0, tamano: 100)).thenAnswer(
+      (_) async =>
+          const PaginaConductores(conductores: <Conductor>[], hayMas: false),
+    );
+    when(
+      () => rutaRepo.estimar(
+        origen: any(named: 'origen'),
+        destino: any(named: 'destino'),
+      ),
+    ).thenAnswer(
+      (_) async => const RutaEstimada(distanciaKm: 1012, duracionMin: 1080),
+    );
+    when(() => rutaRepo.buscarLugares('Bogotá')).thenAnswer(
+      (_) async => const <Lugar>[
+        Lugar(nombre: 'Bogotá, Cundinamarca', coordenada: _bogota),
+      ],
+    );
+    when(() => rutaRepo.buscarLugares('Barranquilla')).thenAnswer(
+      (_) async => const <Lugar>[
+        Lugar(nombre: 'Barranquilla, Atlántico', coordenada: _barranquilla),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MultiRepositoryProvider(
+        providers: <RepositoryProvider<Object>>[
+          RepositoryProvider<ClienteRepository>.value(value: clienteRepo),
+          RepositoryProvider<VehiculoRepository>.value(value: vehiculoRepo),
+          RepositoryProvider<ConductorRepository>.value(value: conductorRepo),
+          RepositoryProvider<ViajeRepository>.value(value: viajeRepo),
+          RepositoryProvider<HojaVidaRepository>.value(
+            value: _MockHojaVidaRepository(),
+          ),
+          RepositoryProvider<RutaRepository>.value(value: rutaRepo),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light,
+          home: const AgendarViajePage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Paso 1 incompleto: no deja avanzar y dice por qué.
+    expect(find.text('1. Ruta y carga'), findsOneWidget);
+    await tester.tap(find.text('Siguiente'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Completa cliente, origen, destino, carga y flete.'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('Seleccionar cliente'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Distribuidora Andina'));
+    await tester.pumpAndSettle();
+    await _elegirUbicacion(tester, 'Bogotá', 'Bogotá, Cundinamarca');
+    await _elegirUbicacion(tester, 'Barranquilla', 'Barranquilla, Atlántico');
+    await tester.enterText(
+      find.descendant(
+        of: find.byType(AppTextField).at(0),
+        matching: find.byType(TextField),
+      ),
+      '17',
+    );
+    await tester.enterText(
+      find.descendant(
+        of: find.byType(AppTextField).at(1),
+        matching: find.byType(TextField),
+      ),
+      '18500000',
+    );
+
+    await tester.tap(find.text('Siguiente'));
+    await tester.pumpAndSettle();
+
+    // Paso 2: nada preseleccionado, fecha y hora hay que elegirlas.
+    expect(find.text('Elegir fecha'), findsOneWidget);
+    expect(find.text('Elegir hora'), findsOneWidget);
+    await tester.tap(find.text('Siguiente'));
+    await tester.pumpAndSettle();
+    expect(find.text('Elige la fecha y la hora de salida.'), findsOneWidget);
+
+    // Volver conserva lo capturado.
+    await tester.tap(find.text('Atrás'));
+    await tester.pumpAndSettle();
+    expect(find.text('Distribuidora Andina'), findsOneWidget);
+    expect(find.text('Bogotá, Cundinamarca'), findsOneWidget);
   });
 }

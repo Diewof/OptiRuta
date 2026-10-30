@@ -42,9 +42,8 @@ void main() {
       () => remote.registrar(
         viajeId: 'v-1',
         motivo: 'Corrección',
-        campoModificado: 'ACPM',
-        valorAnterior: '3210000',
-        valorNuevo: '3300000',
+        concepto: 'ACPM',
+        valorNuevo: 3300000,
       ),
     ).thenAnswer(
       (_) async => <String, dynamic>{
@@ -54,6 +53,8 @@ void main() {
         'campo_modificado': 'ACPM',
         'valor_anterior': '3210000',
         'valor_nuevo': '3300000',
+        'concepto': 'ACPM',
+        'monto': 90000,
         'fecha': '2026-10-08T15:00:00Z',
       },
     );
@@ -61,19 +62,19 @@ void main() {
     final AjusteViaje a = await repo.registrar(
       viajeId: 'v-1',
       motivo: 'Corrección',
-      campoModificado: 'ACPM',
-      valorAnterior: '3210000',
-      valorNuevo: '3300000',
+      concepto: 'ACPM',
+      valorNuevo: 3300000,
     );
 
     expect(a.id, 'a-2');
+    expect(a.concepto, 'ACPM');
+    expect(a.monto, 90000);
     verify(
       () => remote.registrar(
         viajeId: 'v-1',
         motivo: 'Corrección',
-        campoModificado: 'ACPM',
-        valorAnterior: '3210000',
-        valorNuevo: '3300000',
+        concepto: 'ACPM',
+        valorNuevo: 3300000,
       ),
     ).called(1);
   });

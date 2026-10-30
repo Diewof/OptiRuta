@@ -8,24 +8,15 @@ import '../../features/autenticacion/presentation/bloc/auth_state.dart';
 import '../../features/autenticacion/presentation/pages/home_admin_page.dart';
 import '../../features/autenticacion/presentation/pages/home_conductor_page.dart';
 import '../../features/autenticacion/presentation/pages/login_page.dart';
-import '../../features/autenticacion/presentation/pages/perfil_admin_page.dart';
 import '../../features/autenticacion/presentation/pages/recuperar_password_page.dart';
 import '../../features/autenticacion/presentation/pages/registro_page.dart';
-import '../../features/clientes/presentation/pages/clientes_list_page.dart';
-import '../../features/conductores/presentation/pages/conductores_list_page.dart';
-import '../../features/dashboard/presentation/pages/analitica_page.dart';
-import '../../features/notificaciones/presentation/pages/notificaciones_page.dart';
-import '../../features/reportes/presentation/pages/reportes_page.dart';
-import '../../features/satisfaccion/presentation/pages/satisfaccion_page.dart';
-import '../../features/tarifas/presentation/pages/tarifas_page.dart';
-import '../../features/vehiculos/presentation/pages/vehiculos_list_page.dart';
-import '../../features/viajes/presentation/pages/calendario_page.dart';
 import '../../features/viajes/presentation/pages/conductor_historial_page.dart';
 import '../../features/viajes/presentation/pages/conductor_inicio_page.dart';
 import '../../features/viajes/presentation/pages/conductor_manual_page.dart';
 import '../../features/viajes/presentation/pages/conductor_perfil_page.dart';
-import '../../features/viajes/presentation/pages/seguimiento_page.dart';
 import '../pages/work_in_progress_page.dart';
+import '../widgets/admin_section.dart';
+import 'admin_shell.dart';
 
 /// Rutas con nombre de la app. Navegación simple con `Navigator` (sin paquete
 /// de routing mientras el alcance sea el diseño de autenticación).
@@ -44,11 +35,16 @@ abstract final class AppRoutes {
   // Secciones de nivel superior del Administrador (barra inferior de 5). Cada una vuelve
   // a resolver la sesión actual (deny-by-default) en vez de recibir el
   // usuario como argumento de ruta, igual que `homeAdmin`/`homeConductor`.
+  static const String adminInicio = '/admin/inicio';
   static const String adminPerfil = '/admin/perfil';
   static const String adminAnalitica = '/admin/analitica';
   static const String adminSatisfaccion = '/admin/satisfaccion';
-  static const String adminCalendario = '/admin/calendario';
+  static const String adminCalidad = '/admin/calidad';
+  static const String adminCombustible = '/admin/combustible';
+  static const String adminEsperas = '/admin/esperas';
+  static const String adminViajes = '/admin/viajes';
   static const String adminSeguimiento = '/admin/seguimiento';
+  static const String adminHistorial = '/admin/historial';
   static const String adminConductores = '/admin/conductores';
   static const String adminClientes = '/admin/clientes';
   static const String adminFlota = '/admin/flota';
@@ -75,46 +71,13 @@ abstract final class AppRoutes {
       context,
       (usuario) => HomeConductorPage(usuario: usuario),
     ),
-    adminPerfil: (BuildContext context) => _adminSegunSesion(
-      context,
-      (usuario) => PerfilAdminPage(usuario: usuario),
-    ),
-    adminAnalitica: (BuildContext context) => _adminSegunSesion(
-      context,
-      (usuario) => AnaliticaPage(usuario: usuario),
-    ),
-    adminSatisfaccion: (BuildContext context) => _adminSegunSesion(
-      context,
-      (usuario) => SatisfaccionPage(usuario: usuario),
-    ),
-    adminCalendario: (BuildContext context) => _adminSegunSesion(
-      context,
-      (usuario) => CalendarioPage(usuario: usuario),
-    ),
-    adminSeguimiento: (BuildContext context) => _adminSegunSesion(
-      context,
-      (usuario) => SeguimientoPage(usuario: usuario),
-    ),
-    adminConductores: (BuildContext context) => _adminSegunSesion(
-      context,
-      (usuario) => ConductoresListPage(usuario: usuario),
-    ),
-    adminClientes: (BuildContext context) => _adminSegunSesion(
-      context,
-      (usuario) => ClientesListPage(esAdministrador: true, usuario: usuario),
-    ),
-    adminFlota: (BuildContext context) => _adminSegunSesion(
-      context,
-      (usuario) => VehiculosListPage(usuario: usuario),
-    ),
-    adminNotificaciones: (BuildContext context) => _adminSegunSesion(
-      context,
-      (usuario) => NotificacionesPage(usuario: usuario),
-    ),
-    adminTarifas: (BuildContext context) =>
-        _adminSegunSesion(context, (usuario) => TarifasPage(usuario: usuario)),
-    adminReportes: (BuildContext context) =>
-        _adminSegunSesion(context, (usuario) => ReportesPage(usuario: usuario)),
+    // Cada ruta de administrador abre el shell en su sección: las pantallas
+    // viven dentro de él y el cambio entre secciones no pasa por el Navigator.
+    for (final AdminSection s in AdminSection.values)
+      s.ruta: (BuildContext context) => _adminSegunSesion(
+        context,
+        (usuario) => AdminShell(usuario: usuario, inicial: s),
+      ),
     conductorInicio: (BuildContext context) => _conductorSegunSesion(
       context,
       (usuario) => ConductorInicioPage(usuario: usuario),

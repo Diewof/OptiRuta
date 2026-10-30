@@ -10,6 +10,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/admin_scaffold.dart';
 import '../../../../core/widgets/admin_section.dart';
+import '../../../../core/widgets/al_activar_seccion.dart';
 import '../../../../core/widgets/app_alert.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/estado_viaje_badge.dart';
@@ -30,144 +31,67 @@ import '../bloc/historial_cubit.dart';
 import '../bloc/historial_state.dart';
 import '../bloc/seguimiento_en_curso_cubit.dart';
 import '../bloc/seguimiento_en_curso_state.dart';
+import '../widgets/boton_probar_pausa_activa.dart';
 import '../widgets/milestone_stepper.dart';
 import '../widgets/viaje_resumen_card.dart';
 
-/// Seguimiento: viajes en curso (con stepper de hitos) e historial paginado
-/// con rentabilidad marginal. Dos pestañas sobre la misma pantalla, como en
-/// el diseño (Seguimiento.dc.html / Historial.dc.html comparten cabecera).
-class SeguimientoPage extends StatefulWidget {
+/// Seguimiento: viajes asignados o en curso con el stepper de hitos y las
+/// alertas de retraso. El listado general vive en Viajes.
+class SeguimientoPage extends StatelessWidget {
   const SeguimientoPage({required this.usuario, super.key});
 
   final Usuario usuario;
 
   @override
-  State<SeguimientoPage> createState() => _SeguimientoPageState();
-}
-
-class _SeguimientoPageState extends State<SeguimientoPage>
-    with SingleTickerProviderStateMixin {
-  late final TabController _tabs = TabController(length: 2, vsync: this);
-
-  @override
-  void dispose() {
-    _tabs.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: <BlocProvider<dynamic>>[
-        BlocProvider<SeguimientoEnCursoCubit>(
-          create: (BuildContext context) => SeguimientoEnCursoCubit(
-            listarActivos: ListarViajesActivosUseCase(
-              context.read<ViajeRepository>(),
-            ),
-            listarHitos: ListarHitosUseCase(context.read<HitoRepository>()),
-          ),
+    return BlocProvider<SeguimientoEnCursoCubit>(
+      create: (BuildContext context) => SeguimientoEnCursoCubit(
+        listarActivos: ListarViajesActivosUseCase(
+          context.read<ViajeRepository>(),
         ),
-        BlocProvider<HistorialCubit>(
-          create: (BuildContext context) => HistorialCubit(
-            listar: ListarHistorialViajesUseCase(
-              context.read<ViajeRepository>(),
-            ),
-            rentabilidadMarginal: RentabilidadMarginalUseCase(
-              context.read<RentabilidadRepository>(),
-            ),
+        listarHitos: ListarHitosUseCase(context.read<HitoRepository>()),
+      ),
+      child: Builder(
+        builder: (BuildContext context) => AlActivarSeccion(
+          seccion: AdminSection.seguimiento,
+          alActivar: () => context.read<SeguimientoEnCursoCubit>().cargar(),
+          child: AdminScaffold(
+            titulo: 'Viajes',
+            seccionActual: AdminSection.seguimiento,
+            usuario: usuario,
+            body: const _EnCursoTab(),
           ),
-        ),
-      ],
-      child: AdminScaffold(
-        titulo: 'Viajes',
-        seccionActual: AdminSection.seguimiento,
-        usuario: widget.usuario,
-        body: Column(
-          children: <Widget>[
-            _TabHeader(controller: _tabs),
-            Expanded(
-              child: TabBarView(
-                controller: _tabs,
-                children: const <Widget>[_EnCursoTab(), _HistorialTab()],
-              ),
-            ),
-          ],
         ),
       ),
     );
   }
 }
 
-class _TabHeader extends StatelessWidget {
-  const _TabHeader({required this.controller});
+/// Historial paginado de viajes finalizados y cerrados con su rentabilidad
+/// marginal.
+class HistorialPage extends StatelessWidget {
+  const HistorialPage({required this.usuario, super.key});
 
-  final TabController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        color: AppColors.card,
-        border: Border(bottom: BorderSide(color: AppColors.borderCard)),
-      ),
-      child: AnimatedBuilder(
-        animation: controller,
-        builder: (BuildContext context, Widget? child) {
-          return Row(
-            children: <Widget>[
-              Expanded(
-                child: _TabButton(
-                  label: 'En curso',
-                  activo: controller.index == 0,
-                  onTap: () => controller.animateTo(0),
-                ),
-              ),
-              Expanded(
-                child: _TabButton(
-                  label: 'Historial',
-                  activo: controller.index == 1,
-                  onTap: () => controller.animateTo(1),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _TabButton extends StatelessWidget {
-  const _TabButton({
-    required this.label,
-    required this.activo,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool activo;
-  final VoidCallback onTap;
+  final Usuario usuario;
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        height: 48,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              color: activo ? AppColors.brandRed : Colors.transparent,
-              width: 3,
-            ),
-          ),
+    return BlocProvider<HistorialCubit>(
+      create: (BuildContext context) => HistorialCubit(
+        listar: ListarHistorialViajesUseCase(context.read<ViajeRepository>()),
+        rentabilidadMarginal: RentabilidadMarginalUseCase(
+          context.read<RentabilidadRepository>(),
         ),
-        child: Text(
-          label,
-          style: AppTypography.body.copyWith(
-            fontWeight: activo ? FontWeight.w600 : FontWeight.w500,
-            color: activo ? AppColors.textPrimary : AppColors.textSecondary,
+      ),
+      child: Builder(
+        builder: (BuildContext context) => AlActivarSeccion(
+          seccion: AdminSection.historial,
+          alActivar: () => context.read<HistorialCubit>().recargar(),
+          child: AdminScaffold(
+            titulo: 'Viajes',
+            seccionActual: AdminSection.historial,
+            usuario: usuario,
+            body: const _HistorialTab(),
           ),
         ),
       ),
@@ -290,6 +214,13 @@ class _EnCursoTab extends StatelessWidget {
                             ),
                           ],
                         ),
+                        if (va.viaje.estado == EstadoViaje.enCurso) ...<Widget>[
+                          const SizedBox(height: AppSpacing.x3),
+                          BotonProbarPausaActiva(
+                            viajeId: va.viaje.id,
+                            conductor: va.viaje.nombreConductor,
+                          ),
+                        ],
                       ],
                     ),
                   ),

@@ -23,16 +23,14 @@ class AjusteViajeRepositoryImpl implements AjusteViajeRepository {
   Future<AjusteViaje> registrar({
     required String viajeId,
     required String motivo,
-    String? campoModificado,
-    String? valorAnterior,
-    String? valorNuevo,
+    required String concepto,
+    required double valorNuevo,
   }) {
     return ejecutarCatalogo(() async {
       final Map<String, dynamic> fila = await _remote.registrar(
         viajeId: viajeId,
         motivo: motivo,
-        campoModificado: campoModificado,
-        valorAnterior: valorAnterior,
+        concepto: concepto,
         valorNuevo: valorNuevo,
       );
       return AjusteViajeModel.aEntidad(fila);

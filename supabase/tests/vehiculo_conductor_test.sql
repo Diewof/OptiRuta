@@ -114,8 +114,8 @@ select set_config(
 
 select is(
   (select count(*)::int from public.vehiculo where placa in ('PGT001', 'PGT002')),
-  2,
-  'un conductor puede leer todos los vehiculos (sin dato financiero en la tabla)'
+  0,
+  'un conductor solo ve los vehiculos de sus propios viajes'
 );
 
 -- ---------------------------------------------------------------------------

@@ -254,17 +254,24 @@ class ViajeCerradoSheet extends StatelessWidget {
   }
 }
 
-/// Un concepto que se puede ajustar: etiqueta y valor vigente (texto).
+/// Un concepto que se puede ajustar: código (`FLETE` o categoría de costo),
+/// etiqueta y valor vigente (texto, ya con los ajustes anteriores).
 class ConceptoAjustable {
-  const ConceptoAjustable({required this.etiqueta, required this.valorActual});
+  const ConceptoAjustable({
+    required this.codigo,
+    required this.etiqueta,
+    required this.valorActual,
+  });
 
+  final String codigo;
   final String etiqueta;
   final String valorActual;
 }
 
 /// Ajuste sobre un viaje cerrado: concepto, valor nuevo y **motivo
 /// obligatorio**. El botón queda deshabilitado hasta completarlos. Queda
-/// registrado con quién, cuándo y el valor anterior; no modifica los costos.
+/// registrado con quién, cuándo y el valor anterior, y cambia la rentabilidad
+/// del viaje.
 class AjusteViajeSheet extends StatefulWidget {
   const AjusteViajeSheet({
     required this.conceptos,
@@ -275,9 +282,8 @@ class AjusteViajeSheet extends StatefulWidget {
   final List<ConceptoAjustable> conceptos;
   final Future<void> Function({
     required String motivo,
-    required String campo,
-    required String valorAnterior,
-    required String valorNuevo,
+    required String concepto,
+    required double valorNuevo,
   })
   alGuardar;
 
@@ -286,9 +292,8 @@ class AjusteViajeSheet extends StatefulWidget {
     required List<ConceptoAjustable> conceptos,
     required Future<void> Function({
       required String motivo,
-      required String campo,
-      required String valorAnterior,
-      required String valorNuevo,
+      required String concepto,
+      required double valorNuevo,
     })
     alGuardar,
   }) => HojaInferior.mostrar<bool>(
@@ -328,9 +333,8 @@ class _AjusteViajeSheetState extends State<AjusteViajeSheet> {
     try {
       await widget.alGuardar(
         motivo: _motivo.text.trim(),
-        campo: c.etiqueta,
-        valorAnterior: c.valorActual,
-        valorNuevo: _valor.text.replaceAll(RegExp(r'\D'), ''),
+        concepto: c.codigo,
+        valorNuevo: double.parse(_valor.text.replaceAll(RegExp(r'\D'), '')),
       );
       if (mounted) Navigator.of(context).pop(true);
     } on CatalogoFailure catch (falla) {
@@ -351,7 +355,7 @@ class _AjusteViajeSheetState extends State<AjusteViajeSheet> {
         const Text('Registrar ajuste', style: AppTypography.subtitle),
         const SizedBox(height: AppSpacing.x1),
         const Text(
-          'Queda guardado con tu nombre, la fecha y el valor anterior.',
+          'Queda guardado con tu nombre, la fecha y el valor anterior, y cambia la rentabilidad del viaje.',
           style: AppTypography.caption,
         ),
         const SizedBox(height: AppSpacing.x3),

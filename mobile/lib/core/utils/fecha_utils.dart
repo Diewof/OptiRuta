@@ -33,3 +33,12 @@ String formatearHora(DateTime fecha) {
   String dosDigitos(int n) => n.toString().padLeft(2, '0');
   return '${dosDigitos(fecha.hour)}:${dosDigitos(fecha.minute)}';
 }
+
+/// Duración legible a partir de minutos: `45 min`, `5 h 40 min`, `6 h`.
+String formatearDuracion(double minutos) {
+  final int total = minutos.round();
+  final int h = total ~/ 60;
+  final int m = total % 60;
+  if (h == 0) return '$m min';
+  return m == 0 ? '$h h' : '$h h $m min';
+}

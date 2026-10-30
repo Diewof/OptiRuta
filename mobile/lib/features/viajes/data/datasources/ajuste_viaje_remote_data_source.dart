@@ -1,8 +1,9 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Acceso a `public.ajuste_viaje` (lectura) y a la RPC
-/// `viaje_registrar_ajuste` (única escritura: la tabla no tiene grant de
-/// UPDATE/DELETE y el motivo es obligatorio del lado servidor).
+/// `viaje_registrar_ajuste_v2` (única escritura: la tabla no tiene grant de
+/// UPDATE/DELETE, el motivo es obligatorio y el servidor calcula la
+/// diferencia contra el valor vigente).
 class AjusteViajeRemoteDataSource {
   AjusteViajeRemoteDataSource(this._client);
 
@@ -19,17 +20,15 @@ class AjusteViajeRemoteDataSource {
   Future<Map<String, dynamic>> registrar({
     required String viajeId,
     required String motivo,
-    String? campoModificado,
-    String? valorAnterior,
-    String? valorNuevo,
+    required String concepto,
+    required double valorNuevo,
   }) async {
     final dynamic fila = await _client.rpc(
-      'viaje_registrar_ajuste',
+      'viaje_registrar_ajuste_v2',
       params: <String, dynamic>{
         'p_viaje_id': viajeId,
         'p_motivo': motivo,
-        'p_campo_modificado': campoModificado,
-        'p_valor_anterior': valorAnterior,
+        'p_concepto': concepto,
         'p_valor_nuevo': valorNuevo,
       },
     );

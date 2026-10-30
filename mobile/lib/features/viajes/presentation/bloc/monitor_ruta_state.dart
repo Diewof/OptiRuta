@@ -33,6 +33,7 @@ class MonitorRutaActivo extends MonitorRutaState {
     this.alerta,
     this.consentimientoPendiente = false,
     this.registrando = false,
+    this.pausaActiva = false,
   });
 
   final Coordenada? posicion;
@@ -46,11 +47,34 @@ class MonitorRutaActivo extends MonitorRutaState {
   /// Última situación detectada; se limpia cuando el conductor la descarta.
   final TipoAlertaViaje? alerta;
 
+  /// Se cumplieron las horas máximas al volante (o el administrador lanzó la
+  /// prueba): la pantalla del conductor muestra la card de pausa activa.
+  final bool pausaActiva;
+
+  MonitorRutaActivo copiarCon({
+    Coordenada? posicion,
+    TipoAlertaViaje? alerta,
+    bool limpiarAlerta = false,
+    bool? consentimientoPendiente,
+    bool? registrando,
+    bool? pausaActiva,
+  }) {
+    return MonitorRutaActivo(
+      posicion: posicion ?? this.posicion,
+      alerta: limpiarAlerta ? null : alerta ?? this.alerta,
+      consentimientoPendiente:
+          consentimientoPendiente ?? this.consentimientoPendiente,
+      registrando: registrando ?? this.registrando,
+      pausaActiva: pausaActiva ?? this.pausaActiva,
+    );
+  }
+
   @override
   List<Object?> get props => <Object?>[
     posicion,
     alerta,
     consentimientoPendiente,
     registrando,
+    pausaActiva,
   ];
 }

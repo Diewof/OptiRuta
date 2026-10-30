@@ -17,17 +17,23 @@ import '../../../../core/widgets/conductor_section.dart';
 import '../../../../core/widgets/error_state.dart';
 import '../../../../core/widgets/estado_viaje_badge.dart';
 import '../../../../core/widgets/ilustracion_estado.dart';
+import '../../../../core/utils/fecha_utils.dart';
 import '../../../../core/widgets/marca_icon.dart';
+import '../../../../core/widgets/primary_action_button.dart';
 import '../../../../core/widgets/secondary_button.dart';
 import '../../../../core/widgets/skeleton.dart';
 import '../../../../core/widgets/vehiculo_thumb.dart';
 import '../../../autenticacion/domain/entities/usuario.dart';
 import '../../../checklist/domain/entities/checklist.dart';
+import '../../../combustible/domain/repositories/combustible_repository.dart';
+import '../../../combustible/domain/usecases/combustible_use_cases.dart';
+import '../../../combustible/presentation/widgets/tanqueo_sheet.dart';
 import '../../../checklist/domain/repositories/checklist_repository.dart';
 import '../../../checklist/domain/usecases/checklist_use_cases.dart';
 import '../../../checklist/presentation/pages/checklist_page.dart';
 import '../../../vehiculos/domain/entities/tipo_vehiculo.dart';
 import '../../domain/entities/costo_viaje.dart';
+import '../../domain/entities/descargue_pendiente.dart';
 import '../../domain/entities/estado_viaje.dart';
 import '../../domain/entities/hito.dart';
 import '../../domain/entities/tipo_hito.dart';
@@ -41,10 +47,12 @@ import '../../domain/usecases/agregar_costo_viaje_use_case.dart';
 import '../../domain/usecases/listar_costos_viaje_use_case.dart';
 import '../../domain/usecases/listar_hitos_use_case.dart';
 import '../../domain/usecases/listar_viajes_activos_use_case.dart';
+import '../../domain/usecases/obtener_descargue_pendiente_use_case.dart';
 import '../../domain/usecases/iniciar_viaje_use_case.dart';
 import '../../domain/usecases/registrar_hito_use_case.dart';
 import '../bloc/conductor_viaje_cubit.dart';
 import '../bloc/conductor_viaje_state.dart';
+import '../widgets/aviso_pausa_activa.dart';
 import '../widgets/costos_viaje_card.dart';
 import '../widgets/hito_timeline.dart';
 import '../widgets/mapa_ruta_viaje.dart';
@@ -86,6 +94,12 @@ class ConductorInicioPage extends StatelessWidget {
         ),
         obtenerChecklist: ObtenerChecklistViajeUseCase(
           context.read<ChecklistRepository>(),
+        ),
+        obtenerDescarguePendiente: ObtenerDescarguePendienteUseCase(
+          context.read<HitoRepository>(),
+        ),
+        registrarTanqueo: RegistrarTanqueoUseCase(
+          context.read<CombustibleRepository>(),
         ),
       ),
       child: _InicioView(usuario: usuario),
@@ -164,6 +178,34 @@ class _InicioView extends StatelessWidget {
     );
     if (ok == true && context.mounted) {
       announceForAccessibility(context, '${costo.etiqueta} guardado como real');
+    }
+  }
+
+  Future<void> _registrarTanqueo(BuildContext context) async {
+    final ConductorViajeCubit cubit = context.read<ConductorViajeCubit>();
+    final bool? ok = await TanqueoSheet.mostrar(
+      context,
+      alGuardar: (double galones, double valor) =>
+          cubit.registrarTanqueo(galones: galones, valor: valor),
+    );
+    if (ok == true && context.mounted) {
+      announceForAccessibility(context, 'Tanqueo registrado');
+    }
+  }
+
+  Future<void> _registrarSalidaDescargue(
+    BuildContext context,
+    DescarguePendiente pendiente,
+  ) async {
+    final ConductorViajeCubit cubit = context.read<ConductorViajeCubit>();
+    final bool? ok = await RegistrarHitoSheet.mostrar(
+      context,
+      tipo: TipoHito.salidaDescargue,
+      descripcionViaje: '${pendiente.cliente} · ${pendiente.destino}',
+      alConfirmar: cubit.registrarSalidaDescargue,
+    );
+    if (ok == true && context.mounted) {
+      announceForAccessibility(context, 'Salida del descargue registrada');
     }
   }
 
@@ -278,14 +320,28 @@ class _InicioView extends StatelessWidget {
                                 context.read<ConductorViajeCubit>().cargar(),
                           ),
                         ),
-                        ConductorViajeSinAsignar() => _LiberarMonitor(
-                          child: const _SinViaje(),
-                        ),
+                        ConductorViajeSinAsignar(
+                          :final descarguePendiente,
+                          :final procesando,
+                        ) =>
+                          _LiberarMonitor(
+                            child: _SinViaje(
+                              descargue: descarguePendiente,
+                              procesando: procesando,
+                              alRegistrarDescargue: descarguePendiente == null
+                                  ? null
+                                  : () => _registrarSalidaDescargue(
+                                      context,
+                                      descarguePendiente,
+                                    ),
+                            ),
+                          ),
                         ConductorViajeListo() => _ViajeActivo(
                           estado: listo!,
                           alEditarCosto: (CostoViaje c) =>
                               _editarCosto(context, c),
                           alAgregarCosto: () => _agregarCosto(context),
+                          alRegistrarTanqueo: () => _registrarTanqueo(context),
                         ),
                       },
                     ),
@@ -306,6 +362,7 @@ class _InicioView extends StatelessWidget {
       TipoHito.llegadaCargue => 'Siguiente: llegada al cargue',
       TipoHito.salidaConCarga => 'Siguiente: salir con carga',
       TipoHito.llegadaDestino => 'Vas rumbo a ${viaje.destino}',
+      TipoHito.salidaDescargue => 'Registra cuando termines de descargar',
     };
   }
 }
@@ -447,11 +504,13 @@ class _ViajeActivo extends StatelessWidget {
     required this.estado,
     required this.alEditarCosto,
     required this.alAgregarCosto,
+    required this.alRegistrarTanqueo,
   });
 
   final ConductorViajeListo estado;
   final void Function(CostoViaje costo) alEditarCosto;
   final VoidCallback alAgregarCosto;
+  final VoidCallback alRegistrarTanqueo;
 
   /// Estado del checklist antes de salir: bloqueado o listo. Sin checklist no
   /// se muestra nada (el botón ya lo pide).
@@ -514,6 +573,8 @@ class _ViajeActivo extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
+        if (viaje.estado == EstadoViaje.enCurso)
+          AvisoPausaActiva(key: ValueKey<String>(viaje.id), viaje: viaje),
         if (_avisoChecklist != null) ...<Widget>[
           _avisoChecklist!,
           const SizedBox(height: AppSpacing.x3),
@@ -643,16 +704,79 @@ class _ViajeActivo extends StatelessWidget {
               ? null
               : alAgregarCosto,
         ),
+        if (viaje.estado == EstadoViaje.enCurso) ...<Widget>[
+          const SizedBox(height: AppSpacing.x3),
+          SizedBox(
+            height: 48,
+            child: OutlinedButton.icon(
+              onPressed: estado.procesando ? null : alRegistrarTanqueo,
+              icon: const Icon(LucideIcons.fuel, size: 18),
+              label: const Text('Registrar tanqueo'),
+            ),
+          ),
+        ],
       ],
     );
   }
 }
 
 class _SinViaje extends StatelessWidget {
-  const _SinViaje();
+  const _SinViaje({
+    this.descargue,
+    this.procesando = false,
+    this.alRegistrarDescargue,
+  });
+
+  /// Viaje finalizado al que falta la salida del descargue.
+  final DescarguePendiente? descargue;
+  final bool procesando;
+  final VoidCallback? alRegistrarDescargue;
 
   @override
   Widget build(BuildContext context) {
+    final DescarguePendiente? pendiente = descargue;
+    if (pendiente != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          AppCard(
+            stripe: AppCardStripe.left,
+            stripeColor: AppColors.brandRed,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const Text(
+                  '¿Ya terminaste de descargar?',
+                  style: AppTypography.subtitle,
+                ),
+                const SizedBox(height: AppSpacing.x1),
+                Text(
+                  'Llegaste a ${pendiente.destino} (${pendiente.cliente}) a '
+                  'las ${formatearHora(pendiente.llegada)}. Registra la '
+                  'salida cuando acabes, para medir cuánto esperaste.',
+                  style: AppTypography.body.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.x4),
+                PrimaryActionButton(
+                  label: 'Registrar salida del descargue',
+                  grande: true,
+                  loading: procesando,
+                  onPressed: alRegistrarDescargue,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.x3),
+          _sinViaje(context),
+        ],
+      );
+    }
+    return _sinViaje(context);
+  }
+
+  Widget _sinViaje(BuildContext context) {
     return AppCard(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.x2),

@@ -8,6 +8,9 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/fecha_utils.dart';
 import '../../../../core/widgets/app_alert.dart';
 import '../../../../core/widgets/status_badge.dart';
+import '../../../calidad/domain/repositories/calidad_repository.dart';
+import '../../../calidad/domain/usecases/calidad_use_cases.dart';
+import '../../../calidad/presentation/widgets/calidad_conductor_indicador.dart';
 import '../../domain/entities/conductor.dart';
 import '../../domain/repositories/conductor_repository.dart';
 import '../../domain/usecases/obtener_mi_conductor_use_case.dart';
@@ -113,6 +116,12 @@ class _Ficha extends StatelessWidget {
                   ),
                 ),
               ],
+              CalidadConductorIndicador(
+                conductorId: conductor.id,
+                obtener: ObtenerCalidadDeConductorUseCase(
+                  context.read<CalidadRepository>(),
+                ),
+              ),
               const Divider(height: AppSpacing.x6),
               _Dato(etiqueta: 'Licencia', valor: conductor.licencia),
               _Dato(

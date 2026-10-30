@@ -36,7 +36,8 @@ class HitoTimeline extends StatelessWidget {
     TipoHito.salida => MarcaIconos.hitoSalida,
     TipoHito.llegadaCargue => MarcaIconos.hitoCargue,
     TipoHito.salidaConCarga => MarcaIconos.hitoConCarga,
-    TipoHito.llegadaDestino => MarcaIconos.hitoDestino,
+    TipoHito.llegadaDestino ||
+    TipoHito.salidaDescargue => MarcaIconos.hitoDestino,
   };
 
   Hito? _hitoDe(TipoHito tipo) {

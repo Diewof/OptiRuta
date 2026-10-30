@@ -737,7 +737,7 @@ class _RankingState extends State<_Ranking> {
             spacing: AppSpacing.x2,
             runSpacing: AppSpacing.x2,
             children: <Widget>[
-              for (final DimensionMetrica d in DimensionMetrica.values)
+              for (final DimensionMetrica d in dimensionesSatisfaccion)
                 ChipOpcion(
                   etiqueta: d.etiqueta,
                   seleccionado: d == _dimension,

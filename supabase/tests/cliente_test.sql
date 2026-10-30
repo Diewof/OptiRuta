@@ -67,7 +67,7 @@ insert into public.cliente (nombre, documento, telefono, direccion, activo)
 values ('Cliente Prueba pgTAP', '900555666-1', '3009998877', 'Cra 9 # 9-09, Medellin', true);
 
 -- ---------------------------------------------------------------------------
--- Lectura: admin y conductor ven el cliente
+-- Lectura: el admin ve todo; el conductor solo los clientes de sus viajes
 -- ---------------------------------------------------------------------------
 set local role authenticated;
 select set_config(
@@ -82,8 +82,8 @@ select set_config(
 
 select is(
   (select count(*)::int from public.cliente where nombre = 'Cliente Prueba pgTAP'),
-  1,
-  'un conductor puede leer public.cliente (RF: ver cliente del viaje asignado)'
+  0,
+  'un conductor sin viajes con ese cliente no lo ve (solo los clientes de sus viajes)'
 );
 
 -- ---------------------------------------------------------------------------

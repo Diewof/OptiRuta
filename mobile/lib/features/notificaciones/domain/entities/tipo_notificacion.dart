@@ -12,7 +12,11 @@ enum TipoNotificacion {
   novedad('NOVEDAD', 'Novedad reportada'),
   paradaProlongada('PARADA_PROLONGADA', 'Parada prolongada'),
   desvioRuta('DESVIO_RUTA', 'Desvío de ruta'),
-  satisfaccionBaja('SATISFACCION_BAJA', 'Satisfacción baja');
+  satisfaccionBaja('SATISFACCION_BAJA', 'Satisfacción baja'),
+  pausaActivaIgnorada('PAUSA_ACTIVA_IGNORADA', 'Pausa activa ignorada'),
+  calidadRecurrente('CALIDAD_RECURRENTE', 'Calidad recurrente'),
+  esperaExcesiva('ESPERA_EXCESIVA', 'Espera excesiva'),
+  rendimientoBajo('RENDIMIENTO_BAJO', 'Consumo anómalo de combustible');
 
   const TipoNotificacion(this.codigo, this.etiqueta);
 
@@ -39,6 +43,10 @@ enum TipoNotificacion {
       'PARADA_PROLONGADA' => TipoNotificacion.paradaProlongada,
       'DESVIO_RUTA' => TipoNotificacion.desvioRuta,
       'SATISFACCION_BAJA' => TipoNotificacion.satisfaccionBaja,
+      'PAUSA_ACTIVA_IGNORADA' => TipoNotificacion.pausaActivaIgnorada,
+      'CALIDAD_RECURRENTE' => TipoNotificacion.calidadRecurrente,
+      'ESPERA_EXCESIVA' => TipoNotificacion.esperaExcesiva,
+      'RENDIMIENTO_BAJO' => TipoNotificacion.rendimientoBajo,
       _ => throw ArgumentError.value(
         valor,
         'valor',
@@ -46,4 +54,34 @@ enum TipoNotificacion {
       ),
     };
   }
+}
+
+/// Área a la que pertenece una notificación; sirve para filtrar la bandeja.
+enum CategoriaNotificacion {
+  ruta('Ruta'),
+  flota('Flota'),
+  cliente('Clientes');
+
+  const CategoriaNotificacion(this.etiqueta);
+
+  final String etiqueta;
+}
+
+extension ClasificacionTipoNotificacion on TipoNotificacion {
+  CategoriaNotificacion get categoria => switch (this) {
+    TipoNotificacion.documentoPorVencer ||
+    TipoNotificacion.documentoVencido ||
+    TipoNotificacion.mantenimientoProximo ||
+    TipoNotificacion.mantenimientoVencido ||
+    TipoNotificacion.checklistFalla ||
+    TipoNotificacion.rendimientoBajo => CategoriaNotificacion.flota,
+    TipoNotificacion.satisfaccionBaja ||
+    TipoNotificacion.calidadRecurrente => CategoriaNotificacion.cliente,
+    _ => CategoriaNotificacion.ruta,
+  };
+
+  /// Lo que pide una decisión del administrador; el resto solo informa.
+  bool get requiereAccion =>
+      this != TipoNotificacion.viajeCompletado &&
+      this != TipoNotificacion.peajeRegistrado;
 }

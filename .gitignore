@@ -25,3 +25,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Respaldos locales de la BD remota (datos reales/demo)
+supabase/backups/

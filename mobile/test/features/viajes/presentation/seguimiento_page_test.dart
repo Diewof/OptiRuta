@@ -80,7 +80,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Seguimiento'), findsOneWidget);
-    expect(find.text('En curso'), findsNWidgets(2));
+    expect(find.text('En curso'), findsOneWidget); // solo el badge
     expect(find.text('Historial'), findsOneWidget);
     expect(find.textContaining('Bogotá → Barranquilla'), findsOneWidget);
     expect(find.text('Con retraso'), findsNothing);
@@ -89,7 +89,7 @@ void main() {
     expect(find.text('Destino'), findsOneWidget);
   });
 
-  testWidgets('la pestaña Historial muestra el estado vacío', (
+  testWidgets('la sección Historial muestra el estado vacío', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(390, 1200));
@@ -120,13 +120,10 @@ void main() {
         ],
         child: MaterialApp(
           theme: AppTheme.light,
-          home: const SeguimientoPage(usuario: _admin),
+          home: const HistorialPage(usuario: _admin),
         ),
       ),
     );
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Historial'));
     await tester.pumpAndSettle();
 
     expect(find.text('Sin historial'), findsOneWidget);

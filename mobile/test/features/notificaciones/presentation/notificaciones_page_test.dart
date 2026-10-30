@@ -1,3 +1,4 @@
+import 'package:optiruta/core/widgets/chip_opcion.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -177,5 +178,35 @@ void main() {
         tamano: any(named: 'tamano'),
       ),
     ).called(greaterThan(1));
+  });
+
+  testWidgets('los chips filtran la bandeja y la tarjeta anuncia su acción', (
+    WidgetTester tester,
+  ) async {
+    await montar(tester, <Notificacion>[
+      Notificacion(
+        id: 'n-1',
+        tipo: TipoNotificacion.mantenimientoVencido,
+        titulo: 'Mantenimiento vencido',
+        mensaje: 'UFH664 pasó el cambio de aceite.',
+        leida: false,
+        fechaCreacion: DateTime.now(),
+      ),
+      _notificacion(id: 'n-2', fechaCreacion: DateTime.now()),
+    ]);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ver flota ›'), findsOneWidget);
+    expect(find.text('Viaje completado'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(ChipOpcion, 'Flota'));
+    await tester.pumpAndSettle();
+    expect(find.text('Mantenimiento vencido'), findsOneWidget);
+    expect(find.text('Viaje completado'), findsNothing);
+
+    await tester.ensureVisible(find.widgetWithText(ChipOpcion, 'Clientes'));
+    await tester.tap(find.widgetWithText(ChipOpcion, 'Clientes'));
+    await tester.pumpAndSettle();
+    expect(find.text('No hay notificaciones con este filtro.'), findsOneWidget);
   });
 }

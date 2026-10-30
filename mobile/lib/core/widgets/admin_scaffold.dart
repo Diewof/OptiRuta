@@ -8,6 +8,7 @@ import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 import 'admin_section.dart';
+import 'admin_shell_scope.dart';
 import 'brand_mark.dart';
 import 'marca_icon.dart';
 
@@ -35,20 +36,41 @@ class AdminScaffold extends StatelessWidget {
   final bool mostrarCampana;
   final Widget? floatingActionButton;
 
-  void _ir(BuildContext context, String ruta) {
-    Navigator.of(context).pushReplacementNamed(ruta);
+  void _ir(BuildContext context, AdminSection seccion) {
+    final AdminShellScope? shell = AdminShellScope.maybeOf(context);
+    if (shell != null) {
+      shell.irA(seccion);
+    } else {
+      Navigator.of(context).pushReplacementNamed(seccion.ruta);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final List<AdminSection> hermanas = seccionActual.hermanas;
+    // Dentro del shell las pantallas se conservan vivas y la barra inferior
+    // es única; fuera de él (pruebas, rutas sueltas) cada una trae la suya.
+    final AdminShellScope? shell = AdminShellScope.maybeOf(context);
+    final bool esNotificaciones = seccionActual == AdminSection.notificaciones;
+    final bool puedeVolver =
+        esNotificaciones &&
+        (shell != null ? shell.puedeVolver : Navigator.of(context).canPop());
 
     return Scaffold(
       appBar: AppBar(
         backgroundColor: AppColors.navy,
         foregroundColor: AppColors.onNavy,
         automaticallyImplyLeading: false,
-        titleSpacing: AppSpacing.x4,
+        leading: puedeVolver
+            ? IconButton(
+                tooltip: 'Volver',
+                icon: const Icon(LucideIcons.arrowLeft),
+                onPressed: () => shell != null
+                    ? shell.volver()
+                    : Navigator.of(context).maybePop(),
+              )
+            : null,
+        titleSpacing: puedeVolver ? 0 : AppSpacing.x4,
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
@@ -64,8 +86,29 @@ class AdminScaffold extends StatelessWidget {
           ],
         ),
         actions: <Widget>[
-          if (mostrarCampana && seccionActual != AdminSection.notificaciones)
-            _CampanaNotificaciones(contador: notificacionesNoLeidas),
+          if (mostrarCampana && !esNotificaciones)
+            shell == null
+                ? _CampanaNotificaciones(
+                    contador: notificacionesNoLeidas,
+                    onPressed: () =>
+                        Navigator.of(context)
+                            .pushNamed(AppRoutes.adminNotificaciones),
+                  )
+                : ValueListenableBuilder<int>(
+                    valueListenable: shell.noLeidas,
+                    builder: (BuildContext _, int n, Widget? _) =>
+                        _CampanaNotificaciones(
+                          contador: n,
+                          onPressed: () =>
+                              shell.irA(AdminSection.notificaciones),
+                        ),
+                  ),
+          if (shell != null && seccionActual.destino != AdminDestino.cuenta)
+            IconButton(
+              tooltip: 'Mi cuenta',
+              icon: const Icon(LucideIcons.circleUser),
+              onPressed: () => shell.irA(AdminSection.perfil),
+            ),
           const SizedBox(width: AppSpacing.x1),
         ],
         bottom: const PreferredSize(
@@ -82,22 +125,27 @@ class AdminScaffold extends StatelessWidget {
             _SubNavegacion(
               secciones: hermanas,
               actual: seccionActual,
-              onSeleccionar: (AdminSection s) => _ir(context, s.ruta),
+              onSeleccionar: (AdminSection s) => _ir(context, s),
             ),
           Expanded(child: body),
         ],
       ),
       floatingActionButton: floatingActionButton,
-      bottomNavigationBar: _BarraInferior(
-        actual: seccionActual.destino,
-        pendientes: notificacionesNoLeidas,
-        onSeleccionar: (AdminDestino d) {
-          if (d != seccionActual.destino) _ir(context, d.rutaInicial);
-        },
-      ),
+      bottomNavigationBar: shell != null
+          ? null
+          : AdminBarraInferior(
+              actual: seccionActual.destino,
+              onSeleccionar: (AdminDestino d) {
+                if (d != seccionActual.destino) {
+                  Navigator.of(context).pushReplacementNamed(d.rutaInicial);
+                }
+              },
+            ),
     );
   }
 }
+
+const int _maxSinDesplazar = 4;
 
 /// Alterna entre pantallas hermanas (p. ej. Calendario | Seguimiento).
 class _SubNavegacion extends StatelessWidget {
@@ -113,6 +161,15 @@ class _SubNavegacion extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Con muchas hermanas las pestañas no caben y esconderlas en un scroll
+    // horizontal oculta opciones: se elige desde una lista.
+    if (secciones.length > _maxSinDesplazar) {
+      return _SelectorSeccion(
+        secciones: secciones,
+        actual: actual,
+        onSeleccionar: onSeleccionar,
+      );
+    }
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.x4,
@@ -126,37 +183,39 @@ class _SubNavegacion extends StatelessWidget {
           color: AppColors.navyTint,
           borderRadius: AppRadius.mdAll,
         ),
-        child: Row(
+        child: _FilaSubNavegacion(
+          desplazable: secciones.length > _maxSinDesplazar,
           children: <Widget>[
             for (final AdminSection s in secciones)
-              Expanded(
-                child: Semantics(
-                  button: true,
-                  selected: s == actual,
-                  label: s.etiqueta,
-                  excludeSemantics: true,
-                  onTap: () => s == actual ? null : onSeleccionar(s),
-                  child: Material(
-                    color: s == actual ? AppColors.card : Colors.transparent,
+              Semantics(
+                button: true,
+                selected: s == actual,
+                label: s.etiqueta,
+                excludeSemantics: true,
+                onTap: () => s == actual ? null : onSeleccionar(s),
+                child: Material(
+                  color: s == actual ? AppColors.card : Colors.transparent,
+                  borderRadius: AppRadius.smAll,
+                  elevation: 0,
+                  child: InkWell(
                     borderRadius: AppRadius.smAll,
-                    elevation: 0,
-                    child: InkWell(
-                      borderRadius: AppRadius.smAll,
-                      onTap: s == actual ? null : () => onSeleccionar(s),
-                      child: Container(
-                        height: 40,
-                        alignment: Alignment.center,
-                        child: Text(
-                          s.etiqueta,
-                          style: AppTypography.label.copyWith(
-                            fontSize: 13,
-                            fontWeight: s == actual
-                                ? FontWeight.w600
-                                : FontWeight.w500,
-                            color: s == actual
-                                ? AppColors.textPrimary
-                                : AppColors.textSecondary,
-                          ),
+                    onTap: s == actual ? null : () => onSeleccionar(s),
+                    child: Container(
+                      height: 40,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.x2,
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        s.etiqueta,
+                        style: AppTypography.label.copyWith(
+                          fontSize: 13,
+                          fontWeight: s == actual
+                              ? FontWeight.w600
+                              : FontWeight.w500,
+                          color: s == actual
+                              ? AppColors.textPrimary
+                              : AppColors.textSecondary,
                         ),
                       ),
                     ),
@@ -170,23 +229,138 @@ class _SubNavegacion extends StatelessWidget {
   }
 }
 
-class _BarraInferior extends StatelessWidget {
-  const _BarraInferior({
+/// Selector de sección para destinos con más de [_maxSinDesplazar] pantallas.
+class _SelectorSeccion extends StatelessWidget {
+  const _SelectorSeccion({
+    required this.secciones,
     required this.actual,
-    required this.pendientes,
     required this.onSeleccionar,
   });
 
+  final List<AdminSection> secciones;
+  final AdminSection actual;
+  final ValueChanged<AdminSection> onSeleccionar;
+
+  Future<void> _abrir(BuildContext context) async {
+    final AdminSection? elegida = await showModalBottomSheet<AdminSection>(
+      context: context,
+      builder: (BuildContext sheet) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            for (final AdminSection s in secciones)
+              ListTile(
+                title: Text(s.etiqueta),
+                trailing: s == actual
+                    ? const Icon(LucideIcons.check, size: 20)
+                    : null,
+                selected: s == actual,
+                onTap: () => Navigator.of(sheet).pop(s),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (elegida != null && elegida != actual) onSeleccionar(elegida);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.x4,
+        AppSpacing.x3,
+        AppSpacing.x4,
+        0,
+      ),
+      child: Semantics(
+        button: true,
+        label: 'Sección: ${actual.etiqueta}. Cambiar sección',
+        excludeSemantics: true,
+        child: Material(
+          color: AppColors.navyTint,
+          borderRadius: AppRadius.mdAll,
+          child: InkWell(
+            borderRadius: AppRadius.mdAll,
+            onTap: () => _abrir(context),
+            child: Container(
+              height: 48,
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.x4),
+              child: Row(
+                children: <Widget>[
+                  Expanded(
+                    child: Text(
+                      actual.etiqueta,
+                      style: AppTypography.body.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '${secciones.length} secciones',
+                    style: AppTypography.caption,
+                  ),
+                  const SizedBox(width: AppSpacing.x2),
+                  const Icon(LucideIcons.chevronsUpDown, size: 18),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Reparte las pestañas a partes iguales; con más de [_maxSinDesplazar] se
+/// desplazan en horizontal para que ninguna etiqueta se corte.
+class _FilaSubNavegacion extends StatelessWidget {
+  const _FilaSubNavegacion({required this.desplazable, required this.children});
+
+  final bool desplazable;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!desplazable) {
+      return Row(
+        children: <Widget>[for (final Widget c in children) Expanded(child: c)],
+      );
+    }
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: <Widget>[
+          for (final Widget c in children)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.x2),
+              child: c,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Barra inferior fija de los 5 destinos. Pública para que el shell la use.
+class AdminBarraInferior extends StatelessWidget {
+  const AdminBarraInferior({
+    required this.actual,
+    required this.onSeleccionar,
+    super.key,
+  });
+
   final AdminDestino actual;
-  final int pendientes;
   final ValueChanged<AdminDestino> onSeleccionar;
 
   static const Map<AdminDestino, MarcaIconos> _iconos =
       <AdminDestino, MarcaIconos>{
-        AdminDestino.resumen: MarcaIconos.resumen,
+        AdminDestino.inicio: MarcaIconos.inicio,
         AdminDestino.viajes: MarcaIconos.ruta,
         AdminDestino.flota: MarcaIconos.dobleTroque,
         AdminDestino.personas: MarcaIconos.personas,
+        AdminDestino.analisis: MarcaIconos.resumen,
       };
 
   @override
@@ -202,13 +376,14 @@ class _BarraInferior extends StatelessWidget {
           height: 64,
           child: Row(
             children: <Widget>[
-              for (final AdminDestino d in AdminDestino.values)
+              for (final AdminDestino d in AdminDestino.values.where(
+                (AdminDestino d) => d.enBarra,
+              ))
                 Expanded(
                   child: _ItemNav(
                     destino: d,
                     icono: _iconos[d],
                     activo: d == actual,
-                    contador: d == AdminDestino.mas ? pendientes : 0,
                     onTap: () => onSeleccionar(d),
                   ),
                 ),
@@ -225,14 +400,12 @@ class _ItemNav extends StatelessWidget {
     required this.destino,
     required this.icono,
     required this.activo,
-    required this.contador,
     required this.onTap,
   });
 
   final AdminDestino destino;
   final MarcaIconos? icono;
   final bool activo;
-  final int contador;
   final VoidCallback onTap;
 
   @override
@@ -242,9 +415,7 @@ class _ItemNav extends StatelessWidget {
     return Semantics(
       button: true,
       selected: activo,
-      label: contador > 0
-          ? '${destino.etiqueta}, $contador sin leer'
-          : destino.etiqueta,
+      label: destino.etiqueta,
       onTap: onTap,
       excludeSemantics: true,
       child: Material(
@@ -284,30 +455,6 @@ class _ItemNav extends StatelessWidget {
                         )
                       else
                         Icon(LucideIcons.ellipsis, size: 24, color: color),
-                      if (contador > 0)
-                        Positioned(
-                          top: -4,
-                          right: -8,
-                          child: Container(
-                            constraints: const BoxConstraints(minWidth: 16),
-                            height: 16,
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            decoration: const BoxDecoration(
-                              color: AppColors.primary,
-                              borderRadius: AppRadius.pillAll,
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              '$contador',
-                              style: const TextStyle(
-                                fontFamily: AppTypography.family,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.onPrimary,
-                              ),
-                            ),
-                          ),
-                        ),
                     ],
                   ),
                   const SizedBox(height: 4),
@@ -331,9 +478,13 @@ class _ItemNav extends StatelessWidget {
 }
 
 class _CampanaNotificaciones extends StatelessWidget {
-  const _CampanaNotificaciones({required this.contador});
+  const _CampanaNotificaciones({
+    required this.contador,
+    required this.onPressed,
+  });
 
   final int contador;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -341,9 +492,7 @@ class _CampanaNotificaciones extends StatelessWidget {
       tooltip: contador > 0
           ? 'Notificaciones, $contador sin leer'
           : 'Notificaciones',
-      onPressed: () =>
-          Navigator.of(context)
-              .pushReplacementNamed(AppRoutes.adminNotificaciones),
+      onPressed: onPressed,
       icon: Stack(
         clipBehavior: Clip.none,
         children: <Widget>[

@@ -72,7 +72,10 @@ export class ProveedorLaRepublica implements ProveedorPrecioAcpm {
 
     return {
       precioGalon,
-      fechaVigencia: new Date().toISOString().slice(0, 10),
+      // Fecha civil de Colombia (UTC adelantaria el dia pasadas las 7 p. m.).
+      fechaVigencia: new Intl.DateTimeFormat("en-CA", {
+        timeZone: "America/Bogota",
+      }).format(new Date()),
     };
   }
 }

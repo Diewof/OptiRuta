@@ -71,6 +71,9 @@ class MetricasRepositoryImpl implements MetricasRepository {
               kmTotal: _num(f['km_total']),
               viajesATiempo: f['viajes_a_tiempo'] as int,
               viajesMedidos: f['viajes_medidos'] as int,
+              margenPromedio: _num(f['margen_promedio']),
+              margenPct: (f['margen_pct'] as num?)?.toDouble(),
+              bajoMargen: f['bajo_margen'] as bool? ?? false,
             ),
           )
           .toList();

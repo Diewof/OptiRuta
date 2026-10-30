@@ -65,7 +65,7 @@ class SatisfaccionCubit extends Cubit<SatisfaccionState> {
       final List<Object> resultados = await Future.wait(<Future<Object>>[
         _resumen(filtro),
         _comentarios(filtro),
-        for (final DimensionMetrica d in DimensionMetrica.values)
+        for (final DimensionMetrica d in dimensionesSatisfaccion)
           _porDimension(filtro, d),
       ]);
 
@@ -77,8 +77,8 @@ class SatisfaccionCubit extends Cubit<SatisfaccionState> {
           resumen: resultados[0] as ResumenSatisfaccion,
           comentarios: resultados[1] as List<ComentarioSatisfaccion>,
           porDimension: <DimensionMetrica, List<SatisfaccionDimension>>{
-            for (int i = 0; i < DimensionMetrica.values.length; i++)
-              DimensionMetrica.values[i]:
+            for (int i = 0; i < dimensionesSatisfaccion.length; i++)
+              dimensionesSatisfaccion[i]:
                   resultados[2 + i] as List<SatisfaccionDimension>,
           },
         ),

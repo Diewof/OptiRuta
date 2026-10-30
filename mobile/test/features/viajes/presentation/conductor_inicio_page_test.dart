@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:optiruta/features/viajes/domain/repositories/pausa_activa_repository.dart';
 import 'package:optiruta/features/viajes/domain/repositories/ubicacion_viaje_repository.dart';
 import 'package:optiruta/features/viajes/presentation/bloc/monitor_ruta_registro.dart';
 import 'package:optiruta/core/error/catalogo_failure.dart';
@@ -9,6 +10,7 @@ import 'package:optiruta/core/theme/app_theme.dart';
 import 'package:optiruta/features/autenticacion/domain/entities/rol_usuario.dart';
 import 'package:optiruta/features/autenticacion/domain/entities/usuario.dart';
 import 'package:optiruta/features/vehiculos/domain/entities/tipo_vehiculo.dart';
+import 'package:optiruta/features/combustible/domain/repositories/combustible_repository.dart';
 import 'package:optiruta/features/checklist/domain/entities/checklist.dart';
 import 'package:optiruta/features/checklist/domain/repositories/checklist_repository.dart';
 import 'package:optiruta/features/viajes/domain/entities/categoria_costo.dart';
@@ -33,6 +35,9 @@ class _MockHitoRepository extends Mock implements HitoRepository {}
 class _MockCostoViajeRepository extends Mock implements CostoViajeRepository {}
 
 class _MockChecklistRepository extends Mock implements ChecklistRepository {}
+
+class _MockCombustibleRepository extends Mock
+    implements CombustibleRepository {}
 
 const Usuario _usuario = Usuario(
   id: 'u-1',
@@ -66,6 +71,9 @@ const CostoViaje _acpm = CostoViaje(
 
 class _MockServicioUbicacion extends Mock implements ServicioUbicacion {}
 
+class _MockPausaActivaRepository extends Mock
+    implements PausaActivaRepository {}
+
 class _MockUbicacionViajeRepository extends Mock
     implements UbicacionViajeRepository {}
 
@@ -94,6 +102,8 @@ void main() {
         .thenAnswer((_) async => null);
     when(() => ubicacion.solicitarPermiso())
         .thenAnswer((_) async => EstadoPermisoUbicacion.concedido);
+    when(() => ubicacion.posiciones())
+        .thenAnswer((_) => const Stream<Coordenada>.empty());
     when(() => ubicacion.posicionActual())
         .thenAnswer((_) async => const Coordenada(0, 0));
     hitos = <Hito>[];
@@ -170,25 +180,38 @@ void main() {
     });
   });
 
+  late MonitorRutaRegistro registroActual;
+
+  Future<void> cerrar(WidgetTester tester) async {
+    registroActual.liberar();
+    await tester.pumpWidget(const SizedBox());
+  }
+
   Future<void> montar(WidgetTester tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
+    // El viaje EN_CURSO arranca su monitor (GPS + pausa activa): `cerrar` lo
+    // libera al terminar para que no queden temporizadores vivos.
+    final MonitorRutaRegistro registro = MonitorRutaRegistro(
+      ubicacion: ubicacion,
+      viajes: viajeRepo,
+      ubicaciones: _MockUbicacionViajeRepository(),
+      pausaActiva: _MockPausaActivaRepository(),
+    );
+    registroActual = registro;
     await tester.pumpWidget(
       MultiRepositoryProvider(
         providers: <RepositoryProvider<Object>>[
           RepositoryProvider<ViajeRepository>.value(value: viajeRepo),
           RepositoryProvider<ServicioUbicacion>.value(value: ubicacion),
-          RepositoryProvider<MonitorRutaRegistro>.value(
-            value: MonitorRutaRegistro(
-              ubicacion: ubicacion,
-              viajes: viajeRepo,
-              ubicaciones: _MockUbicacionViajeRepository(),
-            ),
-          ),
+          RepositoryProvider<MonitorRutaRegistro>.value(value: registro),
           RepositoryProvider<HitoRepository>.value(value: hitoRepo),
           RepositoryProvider<CostoViajeRepository>.value(value: costoRepo),
           RepositoryProvider<ChecklistRepository>.value(value: checklistRepo),
+          RepositoryProvider<CombustibleRepository>.value(
+            value: _MockCombustibleRepository(),
+          ),
         ],
         child: MaterialApp(
           theme: AppTheme.light,
@@ -216,6 +239,7 @@ void main() {
     expect(find.text('Est.'), findsOneWidget);
     expect(find.text('Agregar real'), findsOneWidget);
     expect(tester.takeException(), isNull);
+    await cerrar(tester);
   });
 
   testWidgets('registrar un hito toma dos toques y avanza al siguiente', (
@@ -240,6 +264,7 @@ void main() {
     expect(find.text('Confirmar'), findsNothing);
     expect(find.text('Registrar llegada a cargue'), findsOneWidget);
     expect(find.text('Real'), findsOneWidget);
+    await cerrar(tester);
   });
 
   testWidgets('un error al registrar se explica dentro de la hoja', (
@@ -262,6 +287,7 @@ void main() {
     expect(find.text('Confirmar'), findsOneWidget); // la hoja sigue abierta
     expect(find.byType(SnackBar), findsNothing);
     expect(hitos, isEmpty);
+    await cerrar(tester);
   });
 
   testWidgets('confirmar el valor real pasa de estimado a real', (
@@ -291,6 +317,7 @@ void main() {
     ).called(1);
     expect(find.text(r'$1.950.000'), findsOneWidget);
     expect(find.text('Editar'), findsOneWidget);
+    await cerrar(tester);
   });
 
   testWidgets('no guarda un valor real vacío', (WidgetTester tester) async {
@@ -314,6 +341,7 @@ void main() {
         valorReal: any(named: 'valorReal'),
       ),
     );
+    await cerrar(tester);
   });
 
   testWidgets('sin viaje asignado muestra el estado vacío con ilustración', (

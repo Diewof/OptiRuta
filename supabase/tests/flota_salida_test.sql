@@ -238,8 +238,8 @@ select is(
 -- ---------------------------------------------------------------------------
 set local role authenticated;
 select set_config('request.jwt.claims', json_build_object(
-  'sub', 'c1000000-0000-0000-0000-0000000000f1', 'role', 'authenticated',
-  'app_metadata', json_build_object('rol', 'CONDUCTOR'))::text, true);
+  'sub', 'a1000000-0000-0000-0000-0000000000f1', 'role', 'authenticated',
+  'app_metadata', json_build_object('rol', 'ADMINISTRADOR'))::text, true);
 
 select is(
   (public.viaje_cambiar_estado('81000000-0000-0000-0000-0000000000f3', 'FINALIZADO')).km_origen,
@@ -287,6 +287,10 @@ select is(
   'un vehículo nuevo nace con el plan de mantenimiento del catálogo'
 );
 
+insert into public.viaje (id, remision, vehiculo_id, conductor_id, cliente_id, origen, destino, estado, valor_flete, distancia_estimada, km_recorridos, km_origen)
+values ('81000000-0000-0000-0000-0000000000f9', 'FLT-REM-9', '51000000-0000-0000-0000-0000000000f7',
+        '61000000-0000-0000-0000-0000000000f1', '71000000-0000-0000-0000-0000000000f1', 'A', 'B', 'FINALIZADO', 1000000, 19000, 19000, 'GPS');
+
 set local role authenticated;
 
 select throws_ok(
@@ -295,8 +299,10 @@ select throws_ok(
   'OR139', null, 'un mantenimiento no puede tener fecha futura'
 );
 
--- Último cambio de aceite hace 30 días a 1.000 km con odómetro en 20.000:
--- van 19.000 de 20.000 km => faltan 1.000 (dentro de la antelación de 1.500).
+-- Un viaje finalizado de 19.000 km lleva el odómetro de 20.000 a 39.000. El km
+-- digitado en el mantenimiento no entra al cálculo: la base es el odómetro
+-- derivado a la fecha (20.000), así que van 19.000 de 20.000 km => faltan 1.000
+-- (dentro de la antelación de 1.500).
 select ok(
   (public.mantenimiento_registrar(
      '51000000-0000-0000-0000-0000000000f7', '', 450000, public.hoy_bogota() - 30, 1000,
@@ -352,12 +358,12 @@ select set_config('request.jwt.claims', json_build_object(
   'sub', 'a1000000-0000-0000-0000-0000000000f1', 'role', 'authenticated',
   'app_metadata', json_build_object('rol', 'ADMINISTRADOR'))::text, true);
 
--- Registrado hoy sin km: usa el odómetro (20.000) y reinicia el plan.
+-- Registrado hoy sin km: usa el odómetro actual (39.000) y reinicia el plan.
 select is(
   (public.mantenimiento_registrar(
      '51000000-0000-0000-0000-0000000000f7', '', 450000, public.hoy_bogota(), null,
      (select id from public.tipo_mantenimiento where codigo = 'ACEITE_MOTOR'))).kilometraje,
-  20000::numeric,
+  39000::numeric,
   'un mantenimiento de hoy sin km toma el odómetro actual'
 );
 

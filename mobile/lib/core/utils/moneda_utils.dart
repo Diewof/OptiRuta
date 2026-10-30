@@ -26,3 +26,7 @@ String formatearPorcentaje(double valor) {
   final String cifra = valor.abs().toStringAsFixed(1).replaceAll('.', ',');
   return '${valor < 0 ? '−' : ''}$cifra %';
 }
+
+/// Número con coma decimal: `8,3`, `12,0`.
+String formatearDecimal(double valor, {int decimales = 1}) =>
+    valor.toStringAsFixed(decimales).replaceAll('.', ',');

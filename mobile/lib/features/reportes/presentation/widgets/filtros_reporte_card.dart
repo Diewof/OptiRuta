@@ -6,6 +6,7 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/fecha_utils.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_select_field.dart';
+import '../../domain/entities/informe.dart';
 import '../../domain/entities/reporte.dart';
 
 /// Panel de filtros compartido por Reportes y por el Resumen: fechas,
@@ -18,6 +19,8 @@ class FiltrosReporteCard extends StatefulWidget {
     required this.alCambiar,
     this.titulo = 'Filtros',
     this.conCard = true,
+    this.conFechas = true,
+    this.campos = CampoFiltro.values,
     super.key,
   });
 
@@ -28,6 +31,10 @@ class FiltrosReporteCard extends StatefulWidget {
 
   /// `false` cuando el panel ya va dentro de otra tarjeta o desplegable.
   final bool conCard;
+
+  /// Qué controles se muestran; el resto no aplica al informe en curso.
+  final bool conFechas;
+  final Iterable<CampoFiltro> campos;
 
   @override
   State<FiltrosReporteCard> createState() => _FiltrosReporteCardState();
@@ -114,9 +121,9 @@ class _FiltrosReporteCardState extends State<FiltrosReporteCard> {
         .map((OpcionFiltro x) => x.nombre)
         .firstOrNull;
 
-    final Widget contenido = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
+    final Set<CampoFiltro> usa = widget.campos.toSet();
+    final List<Widget> controles = <Widget>[
+      if (widget.conFechas)
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
@@ -139,7 +146,7 @@ class _FiltrosReporteCardState extends State<FiltrosReporteCard> {
             ),
           ],
         ),
-        const SizedBox(height: AppSpacing.x3),
+      if (usa.contains(CampoFiltro.cliente))
         AppSelectField(
           label: 'Cliente',
           marcador: 'Todos',
@@ -150,7 +157,7 @@ class _FiltrosReporteCardState extends State<FiltrosReporteCard> {
             (String? id) => widget.alCambiar(f.copiarCon(clienteId: () => id)),
           ),
         ),
-        const SizedBox(height: AppSpacing.x3),
+      if (usa.contains(CampoFiltro.conductor))
         AppSelectField(
           label: 'Conductor',
           marcador: 'Todos',
@@ -162,7 +169,7 @@ class _FiltrosReporteCardState extends State<FiltrosReporteCard> {
                 widget.alCambiar(f.copiarCon(conductorId: () => id)),
           ),
         ),
-        const SizedBox(height: AppSpacing.x3),
+      if (usa.contains(CampoFiltro.vehiculo))
         AppSelectField(
           label: 'Vehículo',
           marcador: 'Todos',
@@ -173,7 +180,7 @@ class _FiltrosReporteCardState extends State<FiltrosReporteCard> {
             (String? id) => widget.alCambiar(f.copiarCon(vehiculoId: () => id)),
           ),
         ),
-        const SizedBox(height: AppSpacing.x3),
+      if (usa.contains(CampoFiltro.ruta))
         TextField(
           controller: _ruta,
           textInputAction: TextInputAction.search,
@@ -188,6 +195,15 @@ class _FiltrosReporteCardState extends State<FiltrosReporteCard> {
           ),
           onSubmitted: _aplicarRuta,
         ),
+    ];
+
+    final Widget contenido = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        for (int i = 0; i < controles.length; i++) ...<Widget>[
+          if (i > 0) const SizedBox(height: AppSpacing.x3),
+          controles[i],
+        ],
       ],
     );
 

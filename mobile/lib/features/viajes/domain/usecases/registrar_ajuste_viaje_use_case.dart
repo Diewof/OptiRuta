@@ -9,14 +9,12 @@ class RegistrarAjusteViajeUseCase {
   Future<AjusteViaje> call({
     required String viajeId,
     required String motivo,
-    String? campoModificado,
-    String? valorAnterior,
-    String? valorNuevo,
+    required String concepto,
+    required double valorNuevo,
   }) => _repositorio.registrar(
     viajeId: viajeId,
     motivo: motivo,
-    campoModificado: campoModificado,
-    valorAnterior: valorAnterior,
+    concepto: concepto,
     valorNuevo: valorNuevo,
   );
 }

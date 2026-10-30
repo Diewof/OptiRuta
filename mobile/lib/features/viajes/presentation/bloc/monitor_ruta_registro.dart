@@ -1,10 +1,12 @@
 // ignore_for_file: prefer_initializing_formals
 import '../../domain/detector_ruta.dart';
 import '../../domain/entities/viaje_resumen.dart';
+import '../../domain/repositories/pausa_activa_repository.dart';
 import '../../domain/repositories/ubicacion_viaje_repository.dart';
 import '../../domain/repositories/viaje_repository.dart';
 import '../../domain/ruta_geometria.dart';
 import '../../domain/servicios/servicio_ubicacion.dart';
+import '../../domain/usecases/pausa_activa_use_cases.dart';
 import '../../domain/usecases/registrar_alerta_viaje_use_case.dart';
 import '../../domain/usecases/ubicacion_viaje_use_cases.dart';
 import 'monitor_ruta_cubit.dart';
@@ -18,13 +20,16 @@ class MonitorRutaRegistro {
     required ServicioUbicacion ubicacion,
     required ViajeRepository viajes,
     required UbicacionViajeRepository ubicaciones,
+    required PausaActivaRepository pausaActiva,
   }) : _ubicacion = ubicacion,
        _viajes = viajes,
-       _ubicaciones = ubicaciones;
+       _ubicaciones = ubicaciones,
+       _pausaActiva = pausaActiva;
 
   final ServicioUbicacion _ubicacion;
   final ViajeRepository _viajes;
   final UbicacionViajeRepository _ubicaciones;
+  final PausaActivaRepository _pausaActiva;
 
   MonitorRutaCubit? _cubit;
   String? _viajeId;
@@ -51,6 +56,8 @@ class MonitorRutaRegistro {
         _ubicaciones,
       ),
       registrarUbicacion: RegistrarUbicacionViajeUseCase(_ubicaciones),
+      registrarPausaIgnorada: RegistrarPausaIgnoradaUseCase(_pausaActiva),
+      consumirPausaPrueba: ConsumirPausaPruebaUseCase(_pausaActiva),
     )..iniciar();
   }
 

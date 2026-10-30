@@ -4,44 +4,32 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
-import '../../../../core/utils/fecha_utils.dart';
-import '../../../../core/utils/moneda_utils.dart';
-import '../../domain/entities/reporte.dart';
+import '../../domain/entities/informe.dart';
 import '../../domain/repositories/reporte_repository.dart';
 
-/// Arma el PDF del reporte y abre el diálogo del sistema para guardarlo o
+/// Arma el PDF de un informe y abre el diálogo del sistema para guardarlo o
 /// compartirlo (paquetes `pdf` + `printing`).
 class ExportadorReportePdf implements ExportadorReporte {
   const ExportadorReportePdf();
 
   @override
   Future<void> exportarPdf({
-    required FiltroReporte filtro,
+    required Informe informe,
     required String descripcionFiltros,
-    required List<FilaReporte> filas,
+    required String nombreArchivo,
   }) async {
     final Uint8List bytes = await construir(
-      filtro: filtro,
+      informe: informe,
       descripcionFiltros: descripcionFiltros,
-      filas: filas,
     );
-    await Printing.sharePdf(
-      bytes: bytes,
-      filename:
-          'reporte-viajes-${_iso(filtro.desde)}_${_iso(filtro.hasta)}.pdf',
-    );
+    await Printing.sharePdf(bytes: bytes, filename: nombreArchivo);
   }
-
-  static String _iso(DateTime f) => f.toIso8601String().split('T').first;
 
   /// Separado de [exportarPdf] para poder probar el documento sin diálogo.
   Future<Uint8List> construir({
-    required FiltroReporte filtro,
+    required Informe informe,
     required String descripcionFiltros,
-    required List<FilaReporte> filas,
   }) async {
-    final NumberFormatCop moneda = NumberFormatCop();
-    final TotalesReporte t = TotalesReporte.de(filas);
     final pw.Document doc = pw.Document();
 
     doc.addPage(
@@ -52,12 +40,11 @@ class ExportadorReportePdf implements ExportadorReporte {
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: <pw.Widget>[
             pw.Text(
-              'OptiRuta · Reporte de viajes cerrados',
+              _seguro('OptiRuta · ${informe.titulo}'),
               style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
             ),
             pw.Text(
-              '${formatearFecha(filtro.desde)} a ${formatearFecha(filtro.hasta)}'
-              ' · $descripcionFiltros',
+              _seguro(descripcionFiltros),
               style: const pw.TextStyle(fontSize: 9),
             ),
             pw.SizedBox(height: 8),
@@ -72,47 +59,41 @@ class ExportadorReportePdf implements ExportadorReporte {
             cellStyle: const pw.TextStyle(fontSize: 8),
             headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
             cellAlignments: <int, pw.Alignment>{
-              for (int i = 5; i <= 9; i++) i: pw.Alignment.centerRight,
+              for (final int i in informe.numericas)
+                i: pw.Alignment.centerRight,
             },
-            headers: const <String>[
-              'Remisión',
-              'Cierre',
-              'Ruta',
-              'Cliente',
-              'Conductor',
-              'Km',
-              'Flete',
-              'Costos',
-              'Rentab.',
-              'A tiempo',
-            ],
+            headerAlignments: <int, pw.Alignment>{
+              for (final int i in informe.numericas)
+                i: pw.Alignment.centerRight,
+            },
+            headers: informe.columnas.map(_seguro).toList(),
             data: <List<String>>[
-              for (final FilaReporte f in filas)
-                <String>[
-                  f.remision,
-                  formatearFecha(f.fechaCierre),
-                  f.ruta,
-                  f.cliente,
-                  '${f.conductor} (${f.placa})',
-                  f.km.round().toString(),
-                  moneda.formatear(f.valorFlete),
-                  moneda.formatear(f.costos),
-                  moneda.formatear(f.rentabilidad),
-                  f.aTiempo == null ? '—' : (f.aTiempo! ? 'Sí' : 'No'),
-                ],
+              for (final List<String> fila in informe.filas)
+                fila.map(_seguro).toList(),
             ],
           ),
-          pw.SizedBox(height: 10),
-          pw.Text(
-            'Totales: ${t.viajes} viajes · ${t.km.round()} km · '
-            'Flete ${moneda.formatear(t.valorFlete)} · '
-            'Costos ${moneda.formatear(t.costos)} · '
-            'Rentabilidad ${moneda.formatear(t.rentabilidad)}',
-            style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
-          ),
+          if (informe.resumen != null) ...<pw.Widget>[
+            pw.SizedBox(height: 10),
+            pw.Text(
+              _seguro(informe.resumen!),
+              style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+            ),
+          ],
+          for (final String nota in informe.notas)
+            pw.Padding(
+              padding: const pw.EdgeInsets.only(top: 4),
+              child: pw.Text(
+                _seguro(nota),
+                style: const pw.TextStyle(fontSize: 8),
+              ),
+            ),
         ],
       ),
     );
     return doc.save();
   }
+
+  /// La fuente estándar del PDF (Helvetica) no dibuja estos símbolos.
+  static String _seguro(String texto) =>
+      texto.replaceAll('—', '-').replaceAll('−', '-').replaceAll('→', '->');
 }

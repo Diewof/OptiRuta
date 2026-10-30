@@ -5,10 +5,15 @@ import '../../../clientes/domain/entities/cliente.dart';
 import '../../../clientes/domain/repositories/cliente_repository.dart';
 import '../../../conductores/domain/entities/conductor.dart';
 import '../../../conductores/domain/repositories/conductor_repository.dart';
+import '../../../vehiculos/domain/entities/hoja_vida.dart';
 import '../../../vehiculos/domain/entities/vehiculo.dart';
+import '../../../vehiculos/domain/repositories/hoja_vida_repository.dart';
 import '../../../vehiculos/domain/repositories/vehiculo_repository.dart';
 import '../../domain/entities/coordenada.dart';
+import '../../domain/entities/disponibilidad.dart';
 import '../../domain/entities/lugar.dart';
+import '../../domain/entities/viaje_resumen.dart';
+import '../../domain/repositories/viaje_repository.dart';
 import '../../domain/usecases/crear_viaje_use_case.dart';
 import '../../domain/usecases/estimar_acpm_use_case.dart';
 import '../../domain/usecases/estimar_ruta_use_case.dart';
@@ -29,7 +34,11 @@ class AgendarViajeCubit extends Cubit<AgendarViajeState> {
     required CrearViajeUseCase crear,
     required EstimarRutaUseCase estimarRuta,
     required EstimarAcpmUseCase estimarAcpm,
-  }) : _clienteRepository = clienteRepository,
+    HojaVidaRepository? hojaVidaRepository,
+    ViajeRepository? viajeRepository,
+  }) : _hojaVidaRepository = hojaVidaRepository,
+       _viajeRepository = viajeRepository,
+       _clienteRepository = clienteRepository,
        _vehiculoRepository = vehiculoRepository,
        _conductorRepository = conductorRepository,
        _crear = crear,
@@ -45,6 +54,11 @@ class AgendarViajeCubit extends Cubit<AgendarViajeState> {
   final CrearViajeUseCase _crear;
   final EstimarRutaUseCase _estimarRuta;
   final EstimarAcpmUseCase _estimarAcpm;
+
+  /// Opcionales: sin ellos no se calculan avisos de disponibilidad.
+  final HojaVidaRepository? _hojaVidaRepository;
+  final ViajeRepository? _viajeRepository;
+  final Map<String, HojaVida?> _hojas = <String, HojaVida?>{};
 
   static const int _tamanoCatalogo = 100;
 
@@ -76,6 +90,70 @@ class AgendarViajeCubit extends Cubit<AgendarViajeState> {
       );
     } on CatalogoFailure catch (falla) {
       emit(AgendarViajeErrorCatalogos(falla.mensaje));
+    }
+  }
+
+  /// Avisos de documentos y cruces de agenda de cada vehículo y conductor
+  /// para la [salida] elegida. Los fallos de red no impiden agendar: sin dato
+  /// simplemente no hay aviso.
+  Future<void> cargarDisponibilidad(DateTime salida) async {
+    final AgendarViajeState actual = state;
+    final ViajeRepository? viajes = _viajeRepository;
+    final HojaVidaRepository? hojas = _hojaVidaRepository;
+    if (actual is! AgendarViajeListo || viajes == null) return;
+
+    try {
+      final DateTime dia = DateTime(salida.year, salida.month, salida.day);
+      final List<List<ViajeResumen>> listas = await Future.wait(
+        <Future<List<ViajeResumen>>>[
+          viajes.listarPorRango(
+            desde: dia.subtract(const Duration(days: 7)),
+            hasta: dia.add(const Duration(days: 1)),
+          ),
+          viajes.listarActivos(),
+        ],
+      );
+      final List<ViajeResumen> abiertos = <ViajeResumen>[
+        ...listas[0],
+        ...listas[1],
+      ];
+      if (hojas != null) {
+        await Future.wait(<Future<void>>[
+          for (final Vehiculo v in actual.vehiculos)
+            if (!_hojas.containsKey(v.id))
+              hojas
+                  .obtener(v.id)
+                  .then<void>(
+                    (HojaVida h) => _hojas[v.id] = h,
+                    onError: (Object _) => _hojas[v.id] = null,
+                  ),
+        ]);
+      }
+      final AgendarViajeState despues = state;
+      if (despues is! AgendarViajeListo) return;
+      emit(
+        despues.copiarCon(
+          avisosVehiculos: <String, AvisoDisponibilidad>{
+            for (final Vehiculo v in despues.vehiculos)
+              v.id: avisoVehiculo(
+                vehiculo: v,
+                hoja: _hojas[v.id],
+                viajes: abiertos,
+                salida: salida,
+              ),
+          },
+          avisosConductores: <String, AvisoDisponibilidad>{
+            for (final Conductor c in despues.conductores)
+              c.id: avisoConductor(
+                conductor: c,
+                viajes: abiertos,
+                salida: salida,
+              ),
+          },
+        ),
+      );
+    } on CatalogoFailure {
+      // Sin avisos: la validación real ocurre al salir.
     }
   }
 

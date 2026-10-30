@@ -10,6 +10,8 @@ abstract final class AjusteViajeModel {
       campoModificado: fila['campo_modificado'] as String?,
       valorAnterior: fila['valor_anterior'] as String?,
       valorNuevo: fila['valor_nuevo'] as String?,
+      concepto: fila['concepto'] as String?,
+      monto: (fila['monto'] as num?)?.toDouble(),
     );
   }
 }

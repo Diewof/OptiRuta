@@ -23,7 +23,8 @@ Widget _envolver(Widget home) {
       for (final String ruta in <String>[
         AppRoutes.adminAnalitica,
         AppRoutes.adminSatisfaccion,
-        AppRoutes.adminCalendario,
+        AppRoutes.adminViajes,
+        AppRoutes.adminHistorial,
         AppRoutes.adminSeguimiento,
         AppRoutes.adminFlota,
         AppRoutes.adminConductores,
@@ -43,7 +44,7 @@ void main() {
     await tester.pumpWidget(
       _envolver(
         const AdminScaffold(
-          titulo: 'Resumen',
+          titulo: 'Panel de análisis',
           seccionActual: AdminSection.analitica,
           usuario: _admin,
           body: SizedBox.shrink(),
@@ -51,14 +52,20 @@ void main() {
       ),
     );
 
-    expect(find.text('Resumen'), findsNWidgets(2)); // título + destino
-    for (final String d in <String>['Viajes', 'Flota', 'Personas', 'Más']) {
+    for (final String d in <String>[
+      'Inicio',
+      'Viajes',
+      'Flota',
+      'Personas',
+      'Análisis',
+    ]) {
       expect(find.text(d), findsOneWidget);
     }
-    // Resumen alterna Costos y Satisfacción; Calendario es de Viajes.
+    // Análisis tiene 6 secciones: se elige desde un selector, no en pestañas.
     expect(find.text('Costos'), findsOneWidget);
-    expect(find.text('Satisfacción'), findsOneWidget);
-    expect(find.text('Calendario'), findsNothing);
+    expect(find.text('Satisfacción'), findsNothing);
+    expect(find.text('6 secciones'), findsOneWidget);
+    expect(find.text('Seguimiento'), findsNothing);
   });
 
   testWidgets('tocar un destino abre su pantalla inicial', (
@@ -67,7 +74,7 @@ void main() {
     await tester.pumpWidget(
       _envolver(
         const AdminScaffold(
-          titulo: 'Resumen',
+          titulo: 'Panel de análisis',
           seccionActual: AdminSection.analitica,
           usuario: _admin,
           body: SizedBox.shrink(),
@@ -81,36 +88,40 @@ void main() {
     expect(find.text('Destino ${AppRoutes.adminFlota}'), findsOneWidget);
   });
 
-  testWidgets('Viajes alterna Calendario y Seguimiento con la sub-navegación', (
-    WidgetTester tester,
-  ) async {
-    await tester.pumpWidget(
-      _envolver(
-        const AdminScaffold(
-          titulo: 'Viajes',
-          seccionActual: AdminSection.calendario,
-          usuario: _admin,
-          body: SizedBox.shrink(),
+  testWidgets(
+    'Viajes alterna Viajes, Seguimiento e Historial con la sub-navegación',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(
+        _envolver(
+          const AdminScaffold(
+            titulo: 'Viajes',
+            seccionActual: AdminSection.viajes,
+            usuario: _admin,
+            body: SizedBox.shrink(),
+          ),
         ),
-      ),
-    );
+      );
 
-    expect(find.text('Calendario'), findsOneWidget);
-    expect(find.text('Seguimiento'), findsOneWidget);
+      expect(find.text('Seguimiento'), findsOneWidget);
+      expect(find.text('Historial'), findsOneWidget);
 
-    await tester.tap(find.text('Seguimiento'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('Seguimiento'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Destino ${AppRoutes.adminSeguimiento}'), findsOneWidget);
-  });
+      expect(
+        find.text('Destino ${AppRoutes.adminSeguimiento}'),
+        findsOneWidget,
+      );
+    },
+  );
 
-  testWidgets('Resumen alterna Costos y Satisfacción con la sub-navegación', (
+  testWidgets('Análisis cambia de sección desde el selector', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
       _envolver(
         const AdminScaffold(
-          titulo: 'Resumen',
+          titulo: 'Panel de análisis',
           seccionActual: AdminSection.analitica,
           usuario: _admin,
           body: SizedBox.shrink(),
@@ -118,6 +129,8 @@ void main() {
       ),
     );
 
+    await tester.tap(find.text('6 secciones'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Satisfacción'));
     await tester.pumpAndSettle();
 
@@ -147,7 +160,7 @@ void main() {
     await tester.pumpWidget(
       _envolver(
         const AdminScaffold(
-          titulo: 'Resumen',
+          titulo: 'Panel de análisis',
           seccionActual: AdminSection.analitica,
           usuario: _admin,
           notificacionesNoLeidas: 3,
@@ -156,7 +169,7 @@ void main() {
       ),
     );
 
-    // Campana y destino «Más» muestran el mismo contador.
-    expect(find.text('3'), findsNWidgets(2));
+    // Solo la campana lleva el contador: «Más» no promete nada ambiguo.
+    expect(find.text('3'), findsOneWidget);
   });
 }

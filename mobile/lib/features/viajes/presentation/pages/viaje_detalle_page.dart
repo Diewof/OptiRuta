@@ -1,4 +1,8 @@
 import '../../../checklist/presentation/widgets/checklist_viaje_card.dart';
+import '../widgets/boton_probar_pausa_activa.dart';
+import '../../../calidad/domain/repositories/calidad_repository.dart';
+import '../../../calidad/domain/usecases/calidad_use_cases.dart';
+import '../../../calidad/presentation/widgets/calidad_viaje_card.dart';
 import '../../../satisfaccion/domain/repositories/satisfaccion_repository.dart';
 import '../../../satisfaccion/domain/usecases/satisfaccion_use_cases.dart';
 import '../../../satisfaccion/presentation/widgets/encuesta_viaje_card.dart';
@@ -252,25 +256,40 @@ class _Vista extends StatelessWidget {
   Future<void> _ajustar(BuildContext context, ViajeDetalleListo e) async {
     final ViajeDetalleCubit cubit = context.read<ViajeDetalleCubit>();
     final NumberFormatCop moneda = NumberFormatCop();
+    // Varias líneas pueden compartir categoría (p. ej. costos «Otro»): el
+    // ajuste es sobre el total de la categoría.
+    final Map<CategoriaCosto, double> totales = <CategoriaCosto, double>{};
+    for (final CostoViaje c in _costosDelViaje(e.costos)) {
+      totales[c.categoria] =
+          (totales[c.categoria] ?? 0) + (c.valorReal ?? c.valorEstimado);
+    }
+    double ajustado(String codigo) => e.ajustes
+        .where((AjusteViaje a) => a.concepto == codigo)
+        .fold<double>(0, (double s, AjusteViaje a) => s + (a.monto ?? 0));
     final ok = await AjusteViajeSheet.mostrar(
       context,
       conceptos: <ConceptoAjustable>[
-        for (final CostoViaje c in _costosDelViaje(e.costos))
+        // El flete de la rentabilidad marginal ya incluye los ajustes previos.
+        ConceptoAjustable(
+          codigo: 'FLETE',
+          etiqueta: 'Flete pactado',
+          valorActual: moneda.formatear(e.marginal.valorFlete),
+        ),
+        for (final MapEntry<CategoriaCosto, double> t in totales.entries)
           ConceptoAjustable(
-            etiqueta: c.etiqueta,
-            valorActual: moneda.formatear(c.valorReal ?? c.valorEstimado),
+            codigo: t.key.codigo,
+            etiqueta: t.key.etiqueta,
+            valorActual: moneda.formatear(t.value + ajustado(t.key.codigo)),
           ),
       ],
       alGuardar:
           ({
             required String motivo,
-            required String campo,
-            required String valorAnterior,
-            required String valorNuevo,
+            required String concepto,
+            required double valorNuevo,
           }) => cubit.registrarAjuste(
             motivo: motivo,
-            campoModificado: campo,
-            valorAnterior: valorAnterior,
+            concepto: concepto,
             valorNuevo: valorNuevo,
           ),
     );
@@ -492,8 +511,33 @@ class _Contenido extends StatelessWidget {
     return BaseCalculo.parcial;
   }
 
+  void _explicarGanancia(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext c) => AlertDialog(
+        title: const Text('Qué incluye esta ganancia'),
+        content: const Text(
+          'Es el flete menos los costos del viaje: ACPM, peajes, cargue, '
+          'descargue, parqueadero, otros y la comisión del conductor. El '
+          'mantenimiento amortizado y el sueldo fijo no entran aquí: se '
+          'cuentan en la rentabilidad del mes, en Análisis.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(c).pop(),
+            child: const Text('Entendido'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final bool checklistArriba =
+        mostrarChecklist &&
+        (estado.estado == EstadoViaje.asignado ||
+            estado.estado == EstadoViaje.planificado);
     final double flete = estado.marginal.valorFlete;
     final double renta = estado.marginal.rentabilidad;
     final double estCostos = costos.fold<double>(
@@ -505,33 +549,29 @@ class _Contenido extends StatelessWidget {
         .where((CostoViaje c) => c.valorReal == null)
         .toList();
 
-    return RefreshIndicator(
-      onRefresh: () =>
-          context.read<ViajeDetalleCubit>().cargar(silencioso: true),
-      child: ListView(
-        padding: const EdgeInsets.all(AppSpacing.x4),
-        children: <Widget>[
+    final bool hayCalidad =
+        mostrarChecklist &&
+        (estado.estado == EstadoViaje.finalizado ||
+            estado.estado == EstadoViaje.cerrado);
+
+    final List<(String, List<Widget>)> paginas = <(String, List<Widget>)>[
+      (
+        'Resumen',
+        <Widget>[
           _Resumen(estado: estado, alerta: alerta),
-          if (mostrarChecklist)
+          // Antes de salir, el checklist es lo accionable: va arriba.
+          if (checklistArriba) ...<Widget>[
+            const SizedBox(height: AppSpacing.x3),
             ChecklistViajeCard(
               viajeId: estado.viaje.id,
               viajeAsignado: estado.estado == EstadoViaje.asignado,
             ),
-          if (mostrarChecklist &&
-              (estado.estado == EstadoViaje.finalizado ||
-                  estado.estado == EstadoViaje.cerrado))
-            EncuestaViajeCard(
-              viajeId: estado.viaje.id,
-              remision: estado.viaje.remision,
-              obtener: ObtenerEncuestaDeViajeUseCase(
-                context.read<SatisfaccionRepository>(),
-              ),
-            ),
+          ],
           const SizedBox(height: AppSpacing.x3),
           Semantics(
             container: true,
             label:
-                'Rentabilidad marginal del viaje: ${formatearMillones(renta, decimales: 2)}',
+                'Ganancia del viaje sin costos fijos: ${formatearMillones(renta, decimales: 2)}',
             child: ExcludeSemantics(
               child: AppCard(
                 child: Column(
@@ -544,7 +584,7 @@ class _Contenido extends StatelessWidget {
                       runSpacing: AppSpacing.x1,
                       children: <Widget>[
                         Text(
-                          'Rentabilidad del viaje · marginal',
+                          'Ganancia del viaje · sin costos fijos',
                           style: AppTypography.label.copyWith(
                             color: AppColors.textSecondary,
                           ),
@@ -607,6 +647,14 @@ class _Contenido extends StatelessWidget {
               ),
             ),
           ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: () => _explicarGanancia(context),
+              icon: const Icon(LucideIcons.info, size: 16),
+              label: const Text('Qué incluye'),
+            ),
+          ),
           if (_acpmSinTarifa(costos)) ...<Widget>[
             const SizedBox(height: AppSpacing.x3),
             const AppAlert(
@@ -618,6 +666,27 @@ class _Contenido extends StatelessWidget {
                   'Regístrala en Más → Tarifas de ACPM.',
             ),
           ],
+          if (mostrarChecklist && !checklistArriba) ...<Widget>[
+            const SizedBox(height: AppSpacing.x3),
+            ChecklistViajeCard(
+              viajeId: estado.viaje.id,
+              viajeAsignado: estado.estado == EstadoViaje.asignado,
+            ),
+          ],
+          // Herramienta de pruebas: no compite con la información del viaje.
+          if (mostrarChecklist &&
+              estado.estado == EstadoViaje.enCurso) ...<Widget>[
+            const SizedBox(height: AppSpacing.x3),
+            BotonProbarPausaActiva(
+              viajeId: estado.viaje.id,
+              conductor: estado.viaje.nombreConductor,
+            ),
+          ],
+        ],
+      ),
+      (
+        'Costos',
+        <Widget>[
           const SizedBox(height: AppSpacing.x3),
           AppCard(
             child: Column(
@@ -631,10 +700,15 @@ class _Contenido extends StatelessWidget {
                         style: AppTypography.subtitle,
                       ),
                     ),
-                    const SizedBox(width: AppSpacing.x2),
-                    Text('Miles de COP', style: AppTypography.caption),
                   ],
                 ),
+                if (alEditarEstimado != null) ...<Widget>[
+                  const SizedBox(height: AppSpacing.x1),
+                  const Text(
+                    'Toca un costo para corregir su estimado.',
+                    style: AppTypography.caption,
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.x2),
                 EstimadoRealTabla(
                   flete: flete,
@@ -644,11 +718,16 @@ class _Contenido extends StatelessWidget {
                         concepto: c.etiqueta,
                         fuente: c.categoria == CategoriaCosto.peaje
                             ? (c.valorReal == null
-                                  ? 'GoPass · esperando'
+                                  ? 'Peaje · pendiente del correo'
                                   : 'GoPass')
                             : c.fuente.etiqueta,
                         estimado: c.valorEstimado,
                         real: c.valorReal,
+                        onTap:
+                            alEditarEstimado == null ||
+                                c.categoria == CategoriaCosto.peaje
+                            ? null
+                            : () => alEditarEstimado!(c),
                       ),
                   ],
                   margenEstimado: margenEst,
@@ -659,88 +738,90 @@ class _Contenido extends StatelessWidget {
                 const Divider(height: 1),
                 const SizedBox(height: AppSpacing.x3),
                 const _Leyenda(),
-              ],
-            ),
-          ),
-          if (alAgregarCosto != null && alEditarEstimado != null) ...<Widget>[
-            const SizedBox(height: AppSpacing.x3),
-            AppCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  const Text(
-                    'Administrar costos',
-                    style: AppTypography.subtitle,
-                  ),
-                  const SizedBox(height: AppSpacing.x1),
-                  const Text(
-                    'Corrige los valores estimados o suma un costo que no está en la lista.',
-                    style: AppTypography.caption,
-                  ),
-                  const SizedBox(height: AppSpacing.x2),
-                  for (final CostoViaje c in costos.where(
-                    (CostoViaje c) => c.categoria != CategoriaCosto.peaje,
-                  ))
-                    Material(
-                      type: MaterialType.transparency,
-                      child: ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(c.etiqueta),
-                        subtitle: Text(
-                          'Estimado ${NumberFormatCop().formatear(c.valorEstimado)}',
-                          style: AppTypography.caption,
-                        ),
-                        trailing: const Icon(LucideIcons.pencil, size: 18),
-                        onTap: () => alEditarEstimado!(c),
-                      ),
-                    ),
-                  const SizedBox(height: AppSpacing.x2),
+                if (alAgregarCosto != null) ...<Widget>[
+                  const SizedBox(height: AppSpacing.x3),
                   OutlinedButton.icon(
                     onPressed: alAgregarCosto,
                     icon: const Icon(LucideIcons.plus, size: 18),
                     label: const Text('Agregar costo'),
                   ),
                 ],
-              ),
-            ),
-          ],
-          const SizedBox(height: AppSpacing.x3),
-          const AppCard(
-            stripe: AppCardStripe.left,
-            stripeColor: AppColors.primary,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                MarcaIcon(MarcaIconos.info, size: 20, color: AppColors.primary),
-                SizedBox(width: AppSpacing.x3),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        'Esto es la rentabilidad del viaje',
-                        style: AppTypography.label,
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        'El mantenimiento amortizado y el sueldo fijo no entran '
-                        'aquí: se cuentan en la rentabilidad consolidada del '
-                        'período (Resumen).',
-                        style: AppTypography.body,
-                      ),
-                    ],
-                  ),
-                ),
               ],
             ),
           ),
+        ],
+      ),
+      (
+        'Tiempos',
+        <Widget>[
           const SizedBox(height: AppSpacing.x3),
           _Tiempos(estado: estado),
           if (estado.ajustes.isNotEmpty) ...<Widget>[
             const SizedBox(height: AppSpacing.x3),
             _Ajustes(ajustes: estado.ajustes),
           ],
-          const SizedBox(height: AppSpacing.x4),
+        ],
+      ),
+      if (hayCalidad)
+        (
+          'Calidad',
+          <Widget>[
+            const SizedBox(height: AppSpacing.x3),
+            EncuestaViajeCard(
+              viajeId: estado.viaje.id,
+              remision: estado.viaje.remision,
+              obtener: ObtenerEncuestaDeViajeUseCase(
+                context.read<SatisfaccionRepository>(),
+              ),
+            ),
+            CalidadViajeCard(
+              viajeId: estado.viaje.id,
+              obtener: ObtenerCalidadDeViajeUseCase(
+                context.read<CalidadRepository>(),
+              ),
+            ),
+          ],
+        ),
+    ];
+
+    return DefaultTabController(
+      length: paginas.length,
+      child: Column(
+        children: <Widget>[
+          Material(
+            color: AppColors.card,
+            child: TabBar(
+              labelColor: AppColors.textPrimary,
+              unselectedLabelColor: AppColors.textSecondary,
+              indicatorColor: AppColors.brandRed,
+              labelStyle: AppTypography.body.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+              tabs: <Widget>[
+                for (final (String titulo, List<Widget> _) in paginas)
+                  Tab(text: titulo),
+              ],
+            ),
+          ),
+          Expanded(
+            child: TabBarView(
+              children: <Widget>[
+                for (final (String _, List<Widget> hijos) in paginas)
+                  RefreshIndicator(
+                    onRefresh: () => context.read<ViajeDetalleCubit>().cargar(
+                      silencioso: true,
+                    ),
+                    child: ListView(
+                      padding: const EdgeInsets.all(AppSpacing.x4),
+                      children: <Widget>[
+                        ...hijos,
+                        const SizedBox(height: AppSpacing.x4),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ],
       ),
     );

@@ -13,6 +13,7 @@ class FilaEstimadoReal {
     this.real,
     this.fuente,
     this.pendiente = 'Pendiente',
+    this.onTap,
   });
 
   final String concepto;
@@ -22,6 +23,9 @@ class FilaEstimadoReal {
   final double estimado;
   final double? real;
   final String pendiente;
+
+  /// Si se pasa, tocar la fila corrige el estimado de ese costo.
+  final VoidCallback? onTap;
 }
 
 /// Tabla «Estimado vs. real» del detalle (opción C del rediseño). Muestra el
@@ -47,7 +51,7 @@ class EstimadoRealTabla extends StatelessWidget {
   final bool margenConfirmado;
 
   static String miles(double v) {
-    final String s = (v.abs() / 1000).round().toString().replaceAllMapped(
+    final String s = v.abs().round().toString().replaceAllMapped(
       RegExp(r'\B(?=(\d{3})+(?!\d))'),
       (Match _) => '.',
     );
@@ -222,19 +226,21 @@ Widget _dif(double d, {required bool ingreso}) {
   }
   final bool malo = ingreso ? d < 0 : d > 0;
   final Color c = malo ? AppColors.error : AppColors.success;
-  return Row(
-    mainAxisSize: MainAxisSize.min,
-    children: <Widget>[
-      MarcaIcon(
-        d > 0 ? MarcaIconos.subir : MarcaIconos.bajar,
-        size: 12,
-        color: c,
-      ),
-      Text(
-        '${d > 0 ? '+' : '−'}${EstimadoRealTabla.miles(d.abs())}',
-        style: _celda.copyWith(fontWeight: FontWeight.w600, color: c),
-      ),
-    ],
+  return _ajustar(
+    Row(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        MarcaIcon(
+          d > 0 ? MarcaIconos.subir : MarcaIconos.bajar,
+          size: 12,
+          color: c,
+        ),
+        Text(
+          '${d > 0 ? '+' : '−'}${EstimadoRealTabla.miles(d.abs())}',
+          style: _celda.copyWith(fontWeight: FontWeight.w600, color: c),
+        ),
+      ],
+    ),
   );
 }
 
@@ -331,7 +337,7 @@ class _Fila extends StatelessWidget {
     );
     final Widget concepto = _Concepto(fila.concepto, fila.fuente);
 
-    return Container(
+    final Widget contenido = Container(
       constraints: const BoxConstraints(minHeight: 48),
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.x1),
       decoration: _separador(),
@@ -351,6 +357,12 @@ class _Fila extends StatelessWidget {
                 dif,
               ],
             ),
+    );
+    if (fila.onTap == null) return contenido;
+    return Semantics(
+      button: true,
+      hint: 'Corregir el estimado',
+      child: InkWell(onTap: fila.onTap, child: contenido),
     );
   }
 }

@@ -1,7 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Envuelve las RPC de métricas. `metricas_periodo` devuelve una sola fila;
-/// `metricas_por_dimension`, una por ruta/cliente/conductor.
+/// `metricas_por_dimension_v3`, una por ruta/cliente/conductor/placa.
 class MetricasRemoteDataSource {
   MetricasRemoteDataSource(this._client);
 
@@ -42,7 +42,7 @@ class MetricasRemoteDataSource {
     String? ruta,
   }) async {
     final List<dynamic> filas = await _client.rpc(
-      'metricas_por_dimension_v2',
+      'metricas_por_dimension_v3',
       params: <String, dynamic>{
         'p_desde': _soloFecha(desde),
         'p_hasta': _soloFecha(hasta),

@@ -32,4 +32,10 @@ class HitoRemoteDataSource {
     );
     return fila as Map<String, dynamic>;
   }
+
+  /// RPC `viaje_descargue_pendiente`: cero o una fila.
+  Future<List<Map<String, dynamic>>> descarguePendiente() async {
+    final List<dynamic> filas = await _client.rpc('viaje_descargue_pendiente');
+    return filas.cast<Map<String, dynamic>>();
+  }
 }

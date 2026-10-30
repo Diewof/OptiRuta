@@ -1,5 +1,16 @@
 import 'package:equatable/equatable.dart';
 
+import '../../../dashboard/domain/entities/metricas.dart';
+
+/// Dimensiones que `satisfaccion_por_dimension` acepta. La encuesta no
+/// registra la placa por separado, así que `PLACA` (que sí existe en las
+/// métricas de rentabilidad) el servidor la rechaza.
+const List<DimensionMetrica> dimensionesSatisfaccion = <DimensionMetrica>[
+  DimensionMetrica.ruta,
+  DimensionMetrica.cliente,
+  DimensionMetrica.conductor,
+];
+
 /// Nivel de satisfacción para dibujar el semáforo. Umbrales (decisión del
 /// dueño, 2026-10-12): CSAT verde ≥ 4,2; ámbar de 3,5 a 4,2; rojo < 3,5.
 /// NPS verde ≥ 50; ámbar de 0 a 50; rojo < 0.

@@ -1,3 +1,4 @@
+import '../entities/descargue_pendiente.dart';
 import '../entities/hito.dart';
 import '../entities/tipo_hito.dart';
 
@@ -16,4 +17,8 @@ abstract interface class HitoRepository {
     required TipoHito tipo,
     required DateTime fechaHora,
   });
+
+  /// Viaje finalizado del conductor que espera la salida del descargue, o
+  /// `null` si no hay ninguno.
+  Future<DescarguePendiente?> descarguePendiente();
 }

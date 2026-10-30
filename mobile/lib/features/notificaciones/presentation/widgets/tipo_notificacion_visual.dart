@@ -21,6 +21,10 @@ extension TipoNotificacionVisual on TipoNotificacion {
     TipoNotificacion.paradaProlongada => LucideIcons.circlePause,
     TipoNotificacion.desvioRuta => LucideIcons.route,
     TipoNotificacion.satisfaccionBaja => LucideIcons.messageSquareWarning,
+    TipoNotificacion.pausaActivaIgnorada => LucideIcons.coffee,
+    TipoNotificacion.calidadRecurrente => LucideIcons.badgeAlert,
+    TipoNotificacion.esperaExcesiva => LucideIcons.hourglass,
+    TipoNotificacion.rendimientoBajo => LucideIcons.fuel,
   };
 
   Color get color => switch (this) {
@@ -35,6 +39,10 @@ extension TipoNotificacionVisual on TipoNotificacion {
     TipoNotificacion.mantenimientoProximo ||
     TipoNotificacion.paradaProlongada ||
     TipoNotificacion.desvioRuta ||
-    TipoNotificacion.satisfaccionBaja => AppColors.warning,
+    TipoNotificacion.satisfaccionBaja ||
+    TipoNotificacion.pausaActivaIgnorada ||
+    TipoNotificacion.calidadRecurrente ||
+    TipoNotificacion.esperaExcesiva ||
+    TipoNotificacion.rendimientoBajo => AppColors.warning,
   };
 }

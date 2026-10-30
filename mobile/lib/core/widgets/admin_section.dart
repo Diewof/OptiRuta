@@ -1,44 +1,52 @@
 import '../routing/app_routes.dart';
 
-/// Los 5 destinos de la barra inferior del Administrador (rediseño v2).
+/// Los 5 destinos de la barra inferior del Administrador. [cuenta] no está en
+/// la barra: se llega desde la barra superior (perfil, notificaciones, tarifas).
 enum AdminDestino {
-  resumen('Resumen', AppRoutes.adminAnalitica),
-  viajes('Viajes', AppRoutes.adminCalendario),
+  inicio('Inicio', AppRoutes.adminInicio),
+  viajes('Viajes', AppRoutes.adminViajes),
   flota('Flota', AppRoutes.adminFlota),
   personas('Personas', AppRoutes.adminConductores),
-  mas('Más', AppRoutes.adminPerfil);
+  analisis('Análisis', AppRoutes.adminAnalitica),
+  cuenta('Cuenta', AppRoutes.adminPerfil, enBarra: false);
 
-  const AdminDestino(this.etiqueta, this.rutaInicial);
+  const AdminDestino(this.etiqueta, this.rutaInicial, {this.enBarra = true});
 
   final String etiqueta;
+  final bool enBarra;
 
-  /// Pantalla a la que lleva el destino al tocarlo.
+  /// Pantalla a la que lleva el destino al tocarlo por primera vez.
   final String rutaInicial;
 }
 
 /// Pantallas de nivel superior del panel de Administrador. Cada una pertenece
 /// a un [AdminDestino]; las de un mismo destino se alternan con la
-/// sub-navegación (p. ej. Viajes: Calendario ↔ Seguimiento).
+/// sub-navegación (p. ej. Análisis: Costos ↔ Calidad).
 enum AdminSection {
-  analitica(AdminDestino.resumen, 'Costos', AppRoutes.adminAnalitica),
-  satisfaccion(
-    AdminDestino.resumen,
-    'Satisfacción',
-    AppRoutes.adminSatisfaccion,
-  ),
-  calendario(AdminDestino.viajes, 'Calendario', AppRoutes.adminCalendario),
+  inicio(AdminDestino.inicio, 'Inicio', AppRoutes.adminInicio),
+  viajes(AdminDestino.viajes, 'Viajes', AppRoutes.adminViajes),
   seguimiento(AdminDestino.viajes, 'Seguimiento', AppRoutes.adminSeguimiento),
+  historial(AdminDestino.viajes, 'Historial', AppRoutes.adminHistorial),
   flota(AdminDestino.flota, 'Flota', AppRoutes.adminFlota),
   conductores(AdminDestino.personas, 'Conductores', AppRoutes.adminConductores),
   clientes(AdminDestino.personas, 'Clientes', AppRoutes.adminClientes),
-  perfil(AdminDestino.mas, 'Perfil', AppRoutes.adminPerfil),
+  analitica(AdminDestino.analisis, 'Costos', AppRoutes.adminAnalitica),
+  satisfaccion(
+    AdminDestino.analisis,
+    'Satisfacción',
+    AppRoutes.adminSatisfaccion,
+  ),
+  calidad(AdminDestino.analisis, 'Calidad', AppRoutes.adminCalidad),
+  combustible(AdminDestino.analisis, 'Combustible', AppRoutes.adminCombustible),
+  esperas(AdminDestino.analisis, 'Esperas', AppRoutes.adminEsperas),
+  reportes(AdminDestino.analisis, 'Reportes', AppRoutes.adminReportes),
+  perfil(AdminDestino.cuenta, 'Perfil', AppRoutes.adminPerfil),
   notificaciones(
-    AdminDestino.mas,
+    AdminDestino.cuenta,
     'Notificaciones',
     AppRoutes.adminNotificaciones,
   ),
-  tarifas(AdminDestino.mas, 'Tarifas ACPM', AppRoutes.adminTarifas),
-  reportes(AdminDestino.mas, 'Reportes', AppRoutes.adminReportes);
+  tarifas(AdminDestino.cuenta, 'Tarifas ACPM', AppRoutes.adminTarifas);
 
   const AdminSection(this.destino, this.etiqueta, this.ruta);
 
@@ -50,4 +58,11 @@ enum AdminSection {
   List<AdminSection> get hermanas => AdminSection.values
       .where((AdminSection s) => s.destino == destino)
       .toList();
+
+  static AdminSection? dePorRuta(String ruta) {
+    for (final AdminSection s in AdminSection.values) {
+      if (s.ruta == ruta) return s;
+    }
+    return null;
+  }
 }
