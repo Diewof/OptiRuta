@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" fill="none">
+  <!-- Imagen de reemplazo de marca: doble troque (3 ejes, carrocería rígida). Se usa mientras no exista la foto real. -->
+  <rect width="160" height="120" fill="#EDEFF3"/>
+  <path d="M-6 100H52C84 100 90 82 118 82H168" stroke="#E3E5E8" stroke-width="16"/>
+  <ellipse cx="80" cy="97" rx="66" ry="4" fill="#14273F" opacity=".12"/>
+  <rect x="12" y="75" width="136" height="6" rx="2" fill="#333A45"/>
+  <rect x="16" y="33" width="86" height="42" rx="4" fill="#FFFFFF" stroke="#14273F" stroke-width="2.5"/>
+  <path d="M38 38v32M60 38v32M82 38v32" stroke="#D9DBDF" stroke-width="1.5"/>
+  <rect x="18" y="62" width="82" height="5" fill="#A62C2C"/>
+  <path d="M106 75V43a5 5 0 0 1 5-5h15a6 6 0 0 1 5 2.7L148 57v18z" fill="#14273F"/>
+  <path d="M112 44h14l9 13h-23z" fill="#E3E5E8"/>
+  <rect x="146" y="63" width="3" height="5" rx="1" fill="#E3E5E8"/>
+  <path d="M104 39V26" stroke="#333A45" stroke-width="3" stroke-linecap="round"/>
+  <g fill="#333A45"><circle cx="34" cy="87" r="9.5"/><circle cx="55" cy="87" r="9.5"/><circle cx="128" cy="87" r="9.5"/></g>
+  <g fill="#EDEFF3"><circle cx="34" cy="87" r="4"/><circle cx="55" cy="87" r="4"/><circle cx="128" cy="87" r="4"/></g>
+  <g fill="#333A45"><circle cx="34" cy="87" r="1.4"/><circle cx="55" cy="87" r="1.4"/><circle cx="128" cy="87" r="1.4"/></g>
+</svg>

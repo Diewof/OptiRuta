@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" fill="none">
+  <!-- Imagen de reemplazo de marca: mula (tractocamión + semirremolque). Se usa mientras no exista la foto real. -->
+  <rect width="160" height="120" fill="#EDEFF3"/>
+  <path d="M-6 100H52C84 100 90 82 118 82H168" stroke="#E3E5E8" stroke-width="16"/>
+  <ellipse cx="80" cy="97" rx="68" ry="4" fill="#14273F" opacity=".12"/>
+  <rect x="6" y="73" width="144" height="5" rx="2" fill="#333A45"/>
+  <rect x="8" y="35" width="90" height="38" rx="4" fill="#FFFFFF" stroke="#14273F" stroke-width="2.5"/>
+  <path d="M30 40v28M52 40v28M74 40v28" stroke="#D9DBDF" stroke-width="1.5"/>
+  <rect x="10" y="60" width="86" height="5" fill="#A62C2C"/>
+  <path d="M102 73V42a5 5 0 0 1 5-5h14a6 6 0 0 1 5 2.7L146 56v17z" fill="#14273F"/>
+  <path d="M108 43h12l9 12h-21z" fill="#E3E5E8"/>
+  <rect x="144" y="62" width="3" height="5" rx="1" fill="#E3E5E8"/>
+  <path d="M100 38V24" stroke="#333A45" stroke-width="3" stroke-linecap="round"/>
+  <g fill="#333A45"><circle cx="28" cy="86" r="9.5"/><circle cx="48" cy="86" r="9.5"/><circle cx="114" cy="86" r="9.5"/><circle cx="136" cy="86" r="9.5"/></g>
+  <g fill="#EDEFF3"><circle cx="28" cy="86" r="4"/><circle cx="48" cy="86" r="4"/><circle cx="114" cy="86" r="4"/><circle cx="136" cy="86" r="4"/></g>
+  <g fill="#333A45"><circle cx="28" cy="86" r="1.4"/><circle cx="48" cy="86" r="1.4"/><circle cx="114" cy="86" r="1.4"/><circle cx="136" cy="86" r="1.4"/></g>
+</svg>
